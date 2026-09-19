@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package senswave.automations.v1;
+
+option csharp_namespace = "Senswave.Contracts.Automations.V1";
+
+import "google/protobuf/struct.proto";
+import "common/v1/common.proto";
+
+service AutomationsService {
+  rpc CreateAutomation(CreateAutomationRequest) returns (senswave.common.v1.IdResponse);
+  rpc UpdateAutomation(UpdateAutomationRequest) returns (UpdateAutomationResponse);
+  rpc DeleteAutomation(DeleteAutomationRequest) returns (DeleteAutomationResponse);
+  rpc GetAutomation(GetAutomationRequest) returns (GetAutomationResponse);
+  rpc DisplayAutomations(DisplayAutomationsRequest) returns (DisplayAutomationsResponse);
+  rpc AutomationState(AutomationStateRequest) returns (AutomationStateResponse);
+  rpc PutConditionToAutomation(PutConditionToAutomationRequest) returns (PutConditionToAutomationResponse);
+  rpc PutResultToAutomation(PutResultToAutomationRequest) returns (PutResultToAutomationResponse);
+  rpc DeleteCondition(DeleteConditionRequest) returns (DeleteConditionResponse);
+  rpc DeleteResult(DeleteResultRequest) returns (DeleteResultResponse);
+}
+
+enum ConditionConnector {
+  CONDITION_CONNECTOR_UNSPECIFIED = 0;
+  CONDITION_CONNECTOR_AND = 1;
+  CONDITION_CONNECTOR_OR = 2;
+}
+
+enum ConditionType {
+  CONDITION_TYPE_UNSPECIFIED = 0;
+  CONDITION_TYPE_BOOLEAN = 1;
+  CONDITION_TYPE_NUMBER = 2;
+  CONDITION_TYPE_TEXT = 3;
+}
+
+message ConditionDto {
+  string operation_id = 1;
+  ConditionType condition_type = 2;
+  google.protobuf.Struct condition_configuration = 3;
+}
+
+message ResultDto {
+  string operation_id = 1;
+  google.protobuf.Value value_to_send = 2;
+}
+
+message CreateAutomationRequest {
+  string home_id = 1;
+  string name = 2;
+  string icon = 3;
+  ConditionConnector condition_connector = 4;
+  repeated ConditionDto conditions = 5;
+  repeated ResultDto results = 6;
+}
+
+message UpdateAutomationRequest {
+  string automation_id = 1;
+  string name = 2;
+  string icon = 3;
+  ConditionConnector condition_connector = 4;
+  repeated ConditionDto conditions = 5;
+  repeated ResultDto results = 6;
+}
+
+message UpdateAutomationResponse {}
+
+message DeleteAutomationRequest {
+  string automation_id = 1;
+}
+
+message DeleteAutomationResponse {}
+
+message ConditionModel {
+  string id = 1;
+  string operation_id = 2;
+  string operation_name = 3;
+  ConditionType condition_type = 4;
+  google.protobuf.Struct condition_configuration = 5;
+}
+
+message ResultModel {
+  string id = 1;
+  string operation_id = 2;
+  string operation_name = 3;
+  google.protobuf.Value value_to_send = 4;
+}
+
+message AutomationModel {
+  string id = 1;
+  string home_id = 2;
+  string name = 3;
+  string icon = 4;
+  ConditionConnector condition_connector = 5;
+  bool is_enabled = 6;
+  repeated ConditionModel conditions = 7;
+  repeated ResultModel results = 8;
+}
+
+message GetAutomationRequest {
+  string automation_id = 1;
+}
+
+message GetAutomationResponse {
+  AutomationModel automation = 1;
+}
+
+message DisplayAutomationsRequest {
+  string home_id = 1;
+}
+
+message DisplayAutomationsResponse {
+  repeated AutomationModel items = 1;
+}
+
+message AutomationStateRequest {
+  string automation_id = 1;
+  bool is_enabled = 2;
+}
+
+message AutomationStateResponse {}
+
+message PutConditionToAutomationRequest {
+  string automation_id = 1;
+  string operation_id = 2;
+  ConditionType condition_type = 3;
+  google.protobuf.Struct condition_configuration = 4;
+}
+
+message PutConditionToAutomationResponse {}
+
+message PutResultToAutomationRequest {
+  string automation_id = 1;
+  string operation_id = 2;
+  string value = 3;
+}
+
+message PutResultToAutomationResponse {}
+
+message DeleteConditionRequest {
+  string condition_id = 1;
+}
+
+message DeleteConditionResponse {}
+
+message DeleteResultRequest {
+  string result_id = 1;
+}
+
+message DeleteResultResponse {}
