@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package senswave.devices.v1;
+
+option csharp_namespace = "Senswave.Contracts.Devices.V1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "common/v1/common.proto";
+
+service DevicesService {
+  rpc CreateDevice(CreateDeviceRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteDevice(DeleteDeviceRequest) returns (DeleteDeviceResponse);
+  rpc DeviceTileAction(DeviceTileActionRequest) returns (DeviceTileActionResponse);
+  rpc DisplayDevice(DisplayDeviceRequest) returns (DisplayDeviceResponse);
+  rpc DisplayDevices(DisplayDevicesRequest) returns (DisplayDevicesResponse);
+  rpc GetDevice(GetDeviceRequest) returns (GetDeviceResponse);
+  rpc UpdateDevice(UpdateDeviceRequest) returns (UpdateDeviceResponse);
+}
+
+message CreateDeviceRequest {
+  string home_id = 1;
+  optional string room_id = 2;
+  string name = 3;
+  string icon = 4;
+}
+
+message DeleteDeviceRequest {
+  string device_id = 1;
+}
+
+message DeleteDeviceResponse {}
+
+message DeviceTileDto {
+  string type = 1;
+  google.protobuf.Value value = 2;
+  google.protobuf.Struct configuration = 3;
+}
+
+message DevicePresenceDto {
+  string type = 1;
+  optional bool value = 2;
+  google.protobuf.Timestamp last_seen_at_utc = 3;
+}
+
+message DisplayDeviceDto {
+  string id = 1;
+  optional string room_id = 2;
+  string name = 3;
+  string icon = 4;
+  DeviceTileDto tile = 5;
+  DevicePresenceDto presence = 6;
+  google.protobuf.Timestamp created_at_utc = 7;
+  google.protobuf.Timestamp updated_at_utc = 8;
+}
+
+message DeviceTileActionRequest {
+  string device_id = 1;
+  google.protobuf.Value value = 2;
+}
+
+message DeviceTileActionResponse {
+  DisplayDeviceDto device = 1;
+}
+
+message DisplayDeviceRequest {
+  string device_id = 1;
+}
+
+message DisplayDeviceResponse {
+  DisplayDeviceDto device = 1;
+}
+
+message DisplayDevicesRequest {
+  string home_id = 1;
+  optional int32 page = 2;
+  optional int32 size = 3;
+}
+
+message DisplayDevicesResponse {
+  repeated DisplayDeviceDto items = 1;
+}
+
+message GetDeviceTileDto {
+  string type = 1;
+  optional string operation_id = 2;
+  optional string displayable_operation_id = 3;
+  google.protobuf.Struct configuration = 4;
+}
+
+message GetDevicePresenceDto {
+  string type = 1;
+  optional string operation_id = 2;
+}
+
+message GetDeviceRequest {
+  string device_id = 1;
+}
+
+message GetDeviceResponse {
+  string id = 1;
+  string name = 2;
+  string icon = 3;
+  optional string room_id = 4;
+  GetDeviceTileDto tile = 5;
+  GetDevicePresenceDto presence = 6;
+}
+
+message UpdateDeviceRequest {
+  string device_id = 1;
+  optional string room_id = 2;
+  string name = 3;
+  string icon = 4;
+  optional string operation_id = 5;
+  optional string displayable_operation_id = 6;
+  google.protobuf.Struct configuration = 7;
+  string type = 8;
+  string presence_operation_id = 9;
+  string presence_type = 10;
+}
+
+message UpdateDeviceResponse {}
