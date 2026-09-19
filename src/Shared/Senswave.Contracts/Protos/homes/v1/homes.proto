@@ -10,7 +10,7 @@ service HomesService {
   rpc CreateHome(CreateHomeRequest) returns (senswave.common.v1.IdResponse);
   rpc DeleteHome(DeleteHomeRequest) returns (DeleteHomeResponse);
   rpc DeleteHomeDataSource(DeleteHomeDataSourceRequest) returns (DeleteHomeDataSourceResponse);
-  rpc GetCurrentHome(GetCurrentHomeRequest) returns (GetCurrentHomeResponse);
+  rpc GetCurrentHome(GetCurrentHomeRequest) returns (senswave.common.v1.IdResponse);
   rpc GetHome(GetHomeRequest) returns (GetHomeResponse);
   rpc GetHomes(GetHomesRequest) returns (GetHomesResponse);
   rpc SetHomeDataSource(SetHomeDataSourceRequest) returns (SetHomeDataSourceResponse);
@@ -40,10 +40,6 @@ message DeleteHomeDataSourceResponse {}
 message GetCurrentHomeRequest {
   optional double latitude = 1;
   optional double longitude = 2;
-}
-
-message GetCurrentHomeResponse {
-  string id = 1;
 }
 
 message LocationDto {
