@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package senswave.devices.v1;
+
+option csharp_namespace = "Senswave.Contracts.Devices.V1";
+
+service SharingService {
+  rpc DeleteSharing(DeleteSharingRequest) returns (DeleteSharingResponse);
+  rpc GetSharings(GetSharingsRequest) returns (GetSharingsResponse);
+  rpc SetSharing(SetSharingRequest) returns (SetSharingResponse);
+}
+
+message DeleteSharingRequest {
+  string device_sharing_id = 1;
+}
+
+message DeleteSharingResponse {}
+
+message SharingDto {
+  optional string sharing_id = 1;
+  string friend_email = 2;
+  string sharing_type = 3;
+}
+
+message GetSharingsRequest {
+  string device_id = 1;
+}
+
+message GetSharingsResponse {
+  repeated SharingDto items = 1;
+}
+
+message SetSharingRequest {
+  string device_id = 1;
+  string sharing_type = 2;
+  string friend_email = 3;
+}
+
+message SetSharingResponse {}
