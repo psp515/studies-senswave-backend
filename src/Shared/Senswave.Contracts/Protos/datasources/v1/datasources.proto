@@ -1,0 +1,183 @@
+syntax = "proto3";
+
+package senswave.datasources.v1;
+
+option csharp_namespace = "Senswave.Contracts.DataSources.V1";
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+service DataSourcesService {
+  rpc CreateBroker(CreateBrokerRequest) returns (senswave.common.v1.IdResponse);
+  rpc CreateSubscribtion(CreateSubscribtionRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteBroker(DeleteBrokerRequest) returns (DeleteBrokerResponse);
+  rpc DeleteSubscribtion(DeleteSubscribtionRequest) returns (DeleteSubscribtionResponse);
+  rpc GetBroker(GetBrokerRequest) returns (GetBrokerResponse);
+  rpc GetBrokers(GetBrokersRequest) returns (GetBrokersResponse);
+  rpc GetSubscribtions(GetSubscribtionsRequest) returns (GetSubscribtionsResponse);
+  rpc UpdateBroker(UpdateBrokerRequest) returns (UpdateBrokerResponse);
+  rpc GetClientState(GetClientStateRequest) returns (GetClientStateResponse);
+  rpc RestartClient(RestartClientRequest) returns (RestartClientResponse);
+  rpc StartClient(StartClientRequest) returns (StartClientResponse);
+  rpc StopClient(StopClientRequest) returns (StopClientResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  rpc GetSessions(GetSessionsRequest) returns (GetSessionsResponse);
+}
+
+message CreateBrokerRequest {
+  string name = 1;
+  string url = 2;
+  string client_name = 3;
+  int32 port = 4;
+  string protocol_version = 5;
+  bool use_tls = 6;
+  string username = 7;
+  string password = 8;
+}
+
+message CreateSubscribtionRequest {
+  string broker_id = 1;
+  string topic = 2;
+}
+
+message DeleteBrokerRequest {
+  string broker_id = 1;
+}
+
+message DeleteBrokerResponse {}
+
+message DeleteSubscribtionRequest {
+  string broker_id = 1;
+  string subscription_id = 2;
+}
+
+message DeleteSubscribtionResponse {}
+
+message GetBrokerRequest {
+  string broker_id = 1;
+}
+
+message GetBrokerResponse {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  string protocol_version = 4;
+  string client_name = 5;
+  int32 port = 6;
+  bool use_tls = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message BrokerDto {
+  string id = 1;
+  string name = 2;
+  string server = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message GetBrokersRequest {
+  int32 page = 1;
+  int32 size = 2;
+}
+
+message GetBrokersResponse {
+  repeated BrokerDto items = 1;
+}
+
+message SubscribtionDto {
+  string id = 1;
+  string topic = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message GetSubscribtionsRequest {
+  string broker_id = 1;
+  int32 page = 2;
+  int32 size = 3;
+}
+
+message GetSubscribtionsResponse {
+  repeated SubscribtionDto items = 1;
+}
+
+message UpdateBrokerRequest {
+  string broker_id = 1;
+  string name = 2;
+  string url = 3;
+  string client_name = 4;
+  optional int32 port = 5;
+  string protocol_version = 6;
+  optional bool use_tls = 7;
+  string username = 8;
+  string password = 9;
+}
+
+message UpdateBrokerResponse {}
+
+message GetClientStateRequest {
+  string broker_id = 1;
+}
+
+message GetClientStateResponse {
+  string connection_status = 1;
+  string latest_session_id = 2;
+}
+
+message RestartClientRequest {
+  string broker_id = 1;
+}
+
+message RestartClientResponse {}
+
+message StartClientRequest {
+  string broker_id = 1;
+  string username = 2;
+  string password = 3;
+}
+
+message StartClientResponse {}
+
+message StopClientRequest {
+  string broker_id = 1;
+}
+
+message StopClientResponse {}
+
+message LogDto {
+  string id = 1;
+  string event_type = 2;
+  string data = 3;
+  google.protobuf.Timestamp created_at_utc = 4;
+}
+
+message GetSessionRequest {
+  string broker_id = 1;
+  string session_id = 2;
+}
+
+message GetSessionResponse {
+  string id = 1;
+  repeated LogDto logs = 2;
+  google.protobuf.Timestamp created_at_utc = 3;
+  google.protobuf.Timestamp updated_at_utc = 4;
+}
+
+message SessionDto {
+  string id = 1;
+  google.protobuf.Timestamp updated_at_utc = 2;
+  google.protobuf.Timestamp created_at_utc = 3;
+  bool finished = 4;
+}
+
+message GetSessionsRequest {
+  string broker_id = 1;
+  int32 page = 2;
+  int32 size = 3;
+}
+
+message GetSessionsResponse {
+  repeated SessionDto items = 1;
+}
