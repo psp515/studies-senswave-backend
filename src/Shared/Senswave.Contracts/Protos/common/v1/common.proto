@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package senswave.common.v1;
+
+option csharp_namespace = "Senswave.Contracts.Common.V1";
+
+message IdResponse {
+  string id = 1;
+}
+
+enum ErrorType {
+  ERROR_TYPE_UNSPECIFIED = 0;
+  ERROR_TYPE_FAILURE = 1;
+  ERROR_TYPE_VALIDATION = 2;
+  ERROR_TYPE_NOT_FOUND = 3;
+  ERROR_TYPE_CONFLICT = 4;
+  ERROR_TYPE_SERVER_FAIL = 5;
+}
+
+message Error {
+  string code = 1;
+  ErrorType type = 2;
+  string description = 3;
+}
