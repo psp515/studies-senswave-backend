@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package senswave.homes.v1;
+
+option csharp_namespace = "Senswave.Contracts.Homes.V1";
+
+import "google/protobuf/timestamp.proto";
+
+service SharingService {
+  rpc AcceptSharing(AcceptSharingRequest) returns (AcceptSharingResponse);
+  rpc CreateSharing(CreateSharingRequest) returns (CreateSharingResponse);
+  rpc DeleteSharing(DeleteSharingRequest) returns (DeleteSharingResponse);
+  rpc GetSharings(GetSharingsRequest) returns (GetSharingsResponse);
+  rpc LeaveSharing(LeaveSharingRequest) returns (LeaveSharingResponse);
+}
+
+message AcceptSharingRequest {
+  string password = 1;
+}
+
+message AcceptSharingResponse {}
+
+message CreateSharingRequest {
+  string home_id = 1;
+  string friend_email = 2;
+  string sharing_type = 3;
+}
+
+message CreateSharingResponse {
+  string invitation_id = 1;
+  string password = 2;
+  google.protobuf.Timestamp expires_at_utc = 3;
+  google.protobuf.Timestamp created_utc = 4;
+}
+
+message DeleteSharingRequest {
+  string home_sharing_id = 1;
+}
+
+message DeleteSharingResponse {}
+
+message SharingDto {
+  string sharing_id = 1;
+  string friend_email = 2;
+  string sharing_type = 3;
+}
+
+message GetSharingsRequest {
+  string home_id = 1;
+}
+
+message GetSharingsResponse {
+  repeated SharingDto items = 1;
+}
+
+message LeaveSharingRequest {
+  string home_id = 1;
+}
+
+message LeaveSharingResponse {}
