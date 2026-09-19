@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package senswave.homes.v1;
+
+option csharp_namespace = "Senswave.Contracts.Homes.V1";
+
+import "common/v1/common.proto";
+
+service RoomsService {
+  rpc CreateRoom(CreateRoomRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse);
+  rpc DisplayRooms(DisplayRoomsRequest) returns (DisplayRoomsResponse);
+  rpc GetRoom(GetRoomRequest) returns (GetRoomResponse);
+  rpc UpdateRoom(UpdateRoomRequest) returns (UpdateRoomResponse);
+}
+
+message CreateRoomRequest {
+  string home_id = 1;
+  string name = 2;
+}
+
+message DeleteRoomRequest {
+  string home_id = 1;
+  string room_id = 2;
+}
+
+message DeleteRoomResponse {}
+
+message RoomDto {
+  string id = 1;
+  string name = 2;
+}
+
+message DisplayRoomsRequest {
+  string home_id = 1;
+}
+
+message DisplayRoomsResponse {
+  repeated RoomDto items = 1;
+}
+
+message GetRoomRequest {
+  string home_id = 1;
+  string room_id = 2;
+}
+
+message GetRoomResponse {
+  string id = 1;
+  string name = 2;
+}
+
+message UpdateRoomRequest {
+  string home_id = 1;
+  string room_id = 2;
+  string name = 3;
+}
+
+message UpdateRoomResponse {}
