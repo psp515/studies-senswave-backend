@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package senswave.liveupdates.v1;
+
+option csharp_namespace = "Senswave.Contracts.LiveUpdates.V1";
+
+service LiveUpdatesService {
+  rpc Subscribe(SubscribeRequest) returns (stream LiveUpdate);
+}
+
+message SubscribeRequest {
+  string home_reference_id = 1;
+}
+
+message LiveUpdate {
+  oneof update {
+    Initialized initialized = 1;
+    DeviceTileUpdate device_tile = 2;
+    WidgetsUpdate widgets = 3;
+    DevicePresenceUpdate device_presence = 4;
+    DataSourceStateUpdate data_source_state = 5;
+  }
+}
+
+message Initialized {}
+message DeviceTileUpdate { string device_id = 1; }
+message WidgetsUpdate { string device_id = 1; repeated string widget_ids = 2; }
+message DevicePresenceUpdate { string device_id = 1; }
+message DataSourceStateUpdate { string data_source_id = 1; string state = 2; }
