@@ -70,6 +70,11 @@
 		<PackageVersion Include="Refit" Version="11.2.0" />
 		<PackageVersion Include="Refit.HttpClientFactory" Version="11.2.0" />
 		<PackageVersion Include="StackExchange.Redis" Version="2.12.8" />
+		<!-- gRPC -->
+		<PackageVersion Include="Grpc.AspNetCore" Version="2.83.0" />
+		<PackageVersion Include="Grpc.Tools" Version="2.84.0" />
+		<PackageVersion Include="Google.Protobuf" Version="3.36.1" />
+		<PackageVersion Include="Grpc.Net.Client" Version="2.83.0" />
 		<!-- Tests -->
 		<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
 		<PackageVersion Include="Testcontainers" Version="4.11.0" />

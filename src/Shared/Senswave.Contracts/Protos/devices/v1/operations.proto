@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package senswave.devices.v1;
+
+option csharp_namespace = "Senswave.Contracts.Devices.V1";
+
+import "google/protobuf/struct.proto";
+import "common/v1/common.proto";
+
+service OperationsService {
+  rpc CreateOperation(CreateOperationRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteOperation(DeleteOperationRequest) returns (DeleteOperationResponse);
+  rpc DisplayOperations(DisplayOperationsRequest) returns (DisplayOperationsResponse);
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse);
+}
+
+message CreateOperationRequest {
+  string device_id = 1;
+  string name = 2;
+  string type = 3;
+  google.protobuf.Struct configuration = 4;
+  string topic = 5;
+}
+
+message DeleteOperationRequest {
+  string operation_id = 1;
+}
+
+message DeleteOperationResponse {}
+
+message OperationDto {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+}
+
+message DisplayOperationsRequest {
+  string device_id = 1;
+  int32 page = 2;
+  int32 size = 3;
+}
+
+message DisplayOperationsResponse {
+  repeated OperationDto items = 1;
+}
+
+message GetOperationRequest {
+  string operation_id = 1;
+}
+
+message GetOperationResponse {
+  string id = 1;
+  string topic = 2;
+  string name = 3;
+  string type = 4;
+  google.protobuf.Struct configuration = 5;
+}

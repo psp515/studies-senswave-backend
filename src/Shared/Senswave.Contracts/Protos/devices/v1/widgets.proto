@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package senswave.devices.v1;
+
+option csharp_namespace = "Senswave.Contracts.Devices.V1";
+
+import "google/protobuf/struct.proto";
+import "common/v1/common.proto";
+
+service WidgetsService {
+  rpc Action(ActionRequest) returns (ActionResponse);
+  rpc CreateWidget(CreateWidgetRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteWidget(DeleteWidgetRequest) returns (DeleteWidgetResponse);
+  rpc DisplayWidgets(DisplayWidgetsRequest) returns (DisplayWidgetsResponse);
+  rpc GetWidget(GetWidgetRequest) returns (GetWidgetResponse);
+  rpc State(StateRequest) returns (StateResponse);
+}
+
+message ActionRequest {
+  string widget_id = 1;
+  google.protobuf.Value value = 2;
+}
+
+message ActionResponse {}
+
+message CreateWidgetRequest {
+  string operation_id = 1;
+  string name = 2;
+  string type = 3;
+  google.protobuf.Struct configuration = 4;
+}
+
+message DeleteWidgetRequest {
+  string widget_id = 1;
+}
+
+message DeleteWidgetResponse {}
+
+message WidgetOperationDto {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+}
+
+message WidgetDto {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  bool enabled = 4;
+}
+
+message DisplayGroupDto {
+  WidgetOperationDto operation = 1;
+  repeated WidgetDto widgets = 2;
+}
+
+message DisplayWidgetsRequest {
+  string device_id = 1;
+}
+
+message DisplayWidgetsResponse {
+  repeated DisplayGroupDto items = 1;
+}
+
+message GetWidgetRequest {
+  string widget_id = 1;
+}
+
+message GetWidgetResponse {
+  string id = 1;
+  string device_id = 2;
+  string operation_id = 3;
+  string name = 4;
+  string type = 5;
+  bool enabled = 6;
+  google.protobuf.Struct configuration = 7;
+}
+
+message StateRequest {
+  string widget_id = 1;
+  bool enabled = 2;
+}
+
+message StateResponse {}

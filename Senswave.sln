@@ -163,6 +163,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Senswave.Users.UnitTests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Senswave.Presentation.DataSource.Worker", "src\Presentation\Senswave.Presentation.DataSource.Worker\Senswave.Presentation.DataSource.Worker.csproj", "{20766625-4C10-4BF1-B455-9C0FD8DAF74F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Senswave.Contracts", "src\Shared\Senswave.Contracts\Senswave.Contracts.csproj", "{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -458,6 +460,12 @@ Global
 		{20766625-4C10-4BF1-B455-9C0FD8DAF74F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{20766625-4C10-4BF1-B455-9C0FD8DAF74F}.Tests|Any CPU.ActiveCfg = Debug|Any CPU
 		{20766625-4C10-4BF1-B455-9C0FD8DAF74F}.Tests|Any CPU.Build.0 = Debug|Any CPU
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}.Tests|Any CPU.ActiveCfg = Tests|Any CPU
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61}.Tests|Any CPU.Build.0 = Tests|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -529,6 +537,7 @@ Global
 		{C1F63AFA-1DFC-4D83-9335-978D0D84AA43} = {EC5A77F5-6BB1-4E93-A5D8-8A676E2DF829}
 		{A0A43F53-7361-44C8-8DCC-1B1AC44499C6} = {51AAD020-7A5A-41FA-8FDC-3779F27EEAF4}
 		{20766625-4C10-4BF1-B455-9C0FD8DAF74F} = {6BD64009-AF6A-4CFE-9B7E-5029F64050C3}
+		{ABCB1385-8EDA-4A1B-9566-81682F5E9C61} = {EC5A77F5-6BB1-4E93-A5D8-8A676E2DF829}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C605F8EC-8EEE-4465-89C1-A9170BAC849D}

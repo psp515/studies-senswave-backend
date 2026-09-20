@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package senswave.devices.v1;
+
+option csharp_namespace = "Senswave.Contracts.Devices.V1";
+
+import "google/protobuf/struct.proto";
+import "common/v1/common.proto";
+
+service DashboardsService {
+  rpc CreateDashboard(CreateDashboardRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteDashboard(DeleteDashboardRequest) returns (DeleteDashboardResponse);
+  rpc DeleteDashboardWidget(DeleteDashboardWidgetRequest) returns (DeleteDashboardWidgetResponse);
+  rpc DisplayDashboard(DisplayDashboardRequest) returns (DisplayDashboardResponse);
+  rpc DisplayDashboards(DisplayDashboardsRequest) returns (DisplayDashboardsResponse);
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+  rpc SetWidgetOnDashboard(SetWidgetOnDashboardRequest) returns (SetWidgetOnDashboardResponse);
+  rpc UpdateDashboard(UpdateDashboardRequest) returns (UpdateDashboardResponse);
+}
+
+message CreateDashboardRequest {
+  string device_id = 1;
+  string name = 2;
+  string icon = 3;
+  google.protobuf.Struct configuration = 4;
+}
+
+message DeleteDashboardRequest {
+  string dashboard_id = 1;
+}
+
+message DeleteDashboardResponse {}
+
+message DeleteDashboardWidgetRequest {
+  string dashboard_id = 1;
+  string widget_id = 2;
+}
+
+message DeleteDashboardWidgetResponse {}
+
+message DisplayDashboardRequest {
+  string dashboard_id = 1;
+}
+
+message DisplayDashboardResponse {
+  string type = 1;
+  google.protobuf.Struct configuration = 2;
+}
+
+message DashboardDto {
+  string id = 1;
+  string name = 2;
+  string icon = 3;
+  string type = 4;
+}
+
+message DisplayDashboardsRequest {
+  string device_id = 1;
+}
+
+message DisplayDashboardsResponse {
+  repeated DashboardDto items = 1;
+}
+
+message GetDashboardRequest {
+  string dashboard_id = 1;
+}
+
+message GetDashboardResponse {
+  string id = 1;
+  string name = 2;
+  string icon = 3;
+  string type = 4;
+  google.protobuf.Struct configuration = 5;
+}
+
+message SetWidgetOnDashboardRequest {
+  string dashboard_id = 1;
+  string widget_id = 2;
+  int32 row = 3;
+  int32 row_span = 4;
+  int32 column = 5;
+  int32 column_span = 6;
+}
+
+message SetWidgetOnDashboardResponse {}
+
+message UpdateDashboardRequest {
+  string dashboard_id = 1;
+  string name = 2;
+  string icon = 3;
+}
+
+message UpdateDashboardResponse {}

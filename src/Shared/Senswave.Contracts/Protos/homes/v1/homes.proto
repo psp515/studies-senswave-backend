@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package senswave.homes.v1;
+
+option csharp_namespace = "Senswave.Contracts.Homes.V1";
+
+import "common/v1/common.proto";
+
+service HomesService {
+  rpc CreateHome(CreateHomeRequest) returns (senswave.common.v1.IdResponse);
+  rpc DeleteHome(DeleteHomeRequest) returns (DeleteHomeResponse);
+  rpc DeleteHomeDataSource(DeleteHomeDataSourceRequest) returns (DeleteHomeDataSourceResponse);
+  rpc GetCurrentHome(GetCurrentHomeRequest) returns (senswave.common.v1.IdResponse);
+  rpc GetHome(GetHomeRequest) returns (GetHomeResponse);
+  rpc GetHomes(GetHomesRequest) returns (GetHomesResponse);
+  rpc SetHomeDataSource(SetHomeDataSourceRequest) returns (SetHomeDataSourceResponse);
+  rpc UpdateHome(UpdateHomeRequest) returns (UpdateHomeResponse);
+}
+
+message CreateHomeRequest {
+  optional string data_source_id = 1;
+  string name = 2;
+  string icon = 3;
+  optional double latitude = 4;
+  optional double longitude = 5;
+}
+
+message DeleteHomeRequest {
+  string home_id = 1;
+}
+
+message DeleteHomeResponse {}
+
+message DeleteHomeDataSourceRequest {
+  string home_id = 1;
+}
+
+message DeleteHomeDataSourceResponse {}
+
+message GetCurrentHomeRequest {
+  optional double latitude = 1;
+  optional double longitude = 2;
+}
+
+message LocationDto {
+  double longitude = 1;
+  double latitude = 2;
+}
+
+message DataSourceDto {
+  optional string id = 1;
+  string state = 2;
+  string name = 3;
+}
+
+message HomeRoomDto {
+  string id = 1;
+  string name = 2;
+}
+
+message GetHomeRequest {
+  string home_id = 1;
+}
+
+message GetHomeResponse {
+  string id = 1;
+  string name = 2;
+  string icon = 3;
+  bool is_owner = 4;
+  DataSourceDto data_source = 5;
+  LocationDto location = 6;
+  repeated HomeRoomDto rooms = 7;
+}
+
+message HomeDto {
+  string id = 1;
+  optional string data_source_id = 2;
+  string name = 3;
+  string icon = 4;
+  bool is_owner = 5;
+  LocationDto location = 6;
+}
+
+message GetHomesRequest {
+  int32 page = 1;
+  int32 size = 2;
+}
+
+message GetHomesResponse {
+  repeated HomeDto items = 1;
+}
+
+message SetHomeDataSourceRequest {
+  string home_id = 1;
+  string broker_id = 2;
+}
+
+message SetHomeDataSourceResponse {}
+
+message UpdateHomeRequest {
+  string home_id = 1;
+  optional string data_source_id = 2;
+  string name = 3;
+  string icon = 4;
+  optional double latitude = 5;
+  optional double longitude = 6;
+}
+
+message UpdateHomeResponse {}
