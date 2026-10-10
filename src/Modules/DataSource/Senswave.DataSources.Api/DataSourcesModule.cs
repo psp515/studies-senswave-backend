@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Routing;
 using Senswave.Abstractions.Modules;
+using Senswave.DataSources.Api.Grpc;
 using Senswave.DataSources.Application;
 using Senswave.DataSources.BrokerConnection;
 using Senswave.DataSources.BrokerConnection.Features.Status;
@@ -8,10 +10,11 @@ using Senswave.DataSources.Domain;
 using Senswave.DataSources.Domain.Brokers.Brokers.Options;
 using Senswave.DataSources.Domain.Diagnostics;
 using Senswave.DataSources.Infrastructure;
+using Senswave.Infrastructure.Grpc.Modules;
 
 namespace Senswave.DataSources.Api;
 
-public class DataSourcesModule : ISenswaveModule
+public class DataSourcesModule : ISenswaveModule, ISenswaveGrpcModule
 {
     public const string DefaultListenerName = DataSourcesActivityProvider.DefaultListenerName;
 
@@ -47,5 +50,10 @@ public class DataSourcesModule : ISenswaveModule
         }
 
         services.AddBrokerClientServices(configuration);
+    }
+
+    public void MapGrpcServices(IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGrpcService<DataSourcesGrpcService>();
     }
 }

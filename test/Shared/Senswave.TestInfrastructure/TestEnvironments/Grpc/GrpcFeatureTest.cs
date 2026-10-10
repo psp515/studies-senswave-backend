@@ -9,7 +9,17 @@ namespace Senswave.TestInfrastructure.TestEnvironments.Grpc;
 /// <summary>
 /// Base for <c>*.EndTestsGrpc</c> projects: success-scenario smoke tests over the gRPC transport.
 /// </summary>
-public class GrpcFeatureTest(WebApplicationFactory<Program> factory) : IClassFixture<GrpcTestEnvironment>
+public class GrpcFeatureTest(WebApplicationFactory<Program> factory) : GrpcFeatureTestBase(factory), IClassFixture<GrpcTestEnvironment>;
+
+/// <summary>
+/// <see cref="GrpcFeatureTest"/> with a Mosquitto broker available (<see cref="GrpcMqttTestEnvironment"/>).
+/// </summary>
+public class GrpcMqttFeatureTest(WebApplicationFactory<Program> factory) : GrpcFeatureTestBase(factory), IClassFixture<GrpcMqttTestEnvironment>
+{
+    protected GrpcMqttTestEnvironment MqttEnvironment => (GrpcMqttTestEnvironment)Factory;
+}
+
+public abstract class GrpcFeatureTestBase(WebApplicationFactory<Program> factory)
 {
     protected const string UserEmail = "user@gmail.com";
     protected const string UserPassword = "User123456!";

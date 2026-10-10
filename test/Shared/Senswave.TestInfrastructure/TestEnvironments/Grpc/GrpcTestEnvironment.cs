@@ -73,7 +73,7 @@ public class GrpcTestEnvironment : WebApplicationFactory<Program>, IAsyncLifetim
         builder.UseEnvironment("Test");
     }
 
-    public async Task InitializeAsync()
+    public virtual async Task InitializeAsync()
     {
         await _synchronizer.WaitAsync();
 
