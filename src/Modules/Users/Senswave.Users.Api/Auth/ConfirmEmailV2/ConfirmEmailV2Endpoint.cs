@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Senswave.Users.Api.Auth.ConfirmEmailV2;
 
-public class ConfirmEmailV2Endpoint : IEndpoint
+public class ConfirmEmailV2Endpoint : IEndpoint, INavigationEndpoint
 {
     public void Map(IEndpointRouteBuilder app)
     {

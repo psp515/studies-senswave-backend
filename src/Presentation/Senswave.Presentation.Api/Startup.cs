@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Senswave.Abstractions.Modules;
+using Senswave.Abstractions.Transport;
 using Senswave.Api.Cors;
 using Senswave.Api.Diagnostics;
 using Senswave.Api.Public;
@@ -14,6 +15,8 @@ using Senswave.DataSources.Api;
 using Senswave.Devices.Api;
 using Senswave.Homes.Api;
 using Senswave.Infrastructure;
+using Senswave.Infrastructure.Grpc;
+using Senswave.Infrastructure.Grpc.Modules;
 using Senswave.Infrastructure.Module;
 using Senswave.Infrastructure.Persistence;
 using Senswave.Infrastructure.Web;
@@ -38,6 +41,7 @@ public class Startup
     private readonly IList<ISenswaveModule> _modules;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
+    private readonly TransportOptions _transport;
 
     public Startup(IConfiguration configuration, IWebHostEnvironment environment)
     {
@@ -45,6 +49,7 @@ public class Startup
         _modules = ModuleLoader.LoadModules(_senswaveAssemblies);
         _configuration = configuration;
         _environment = environment;
+        _transport = TransportOptions.FromConfiguration(configuration);
 
         if (_modules.Count == 0)
             throw new InvalidDataException("Failed to load modules");
@@ -179,7 +184,20 @@ public class Startup
         services.AddRateLimiters(_configuration);
         services.AddPublicModule(_configuration);
 
-        services.AddScoped<LegalMiddleware>();
+        services.Configure<TransportOptions>(options => options.Mode = _transport.Mode);
+
+        if (_transport.IsGrpc)
+        {
+            services.AddGrpcInfrastructure(options =>
+            {
+                options.EnableDetailedErrors = _environment.IsDevelopment();
+            });
+        }
+        else
+        {
+            services.AddScoped<LegalMiddleware>();
+        }
+
         services.AddExceptionHandler<GlobalExceptionHandlerMiddleware>();
         services.AddTransient<DatabaseContextInitializer>();
 
@@ -202,6 +220,7 @@ public class Startup
         ILogger<Startup> logger)
     {
         logger.LogInformation("Modules: {modules}", string.Join(", ", _modules.Select(x => x.Name)));
+        logger.LogInformation("Transport: {transport}", _transport.Mode);
 
         app.UseMiddleware<DiagnosticsMiddleware>();
 
@@ -238,7 +257,9 @@ public class Startup
         app.UseMiddleware<HealthCheckMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
-        app.UseMiddleware<LegalMiddleware>();
+
+        if (!_transport.IsGrpc)
+            app.UseMiddleware<LegalMiddleware>();
 
         app.UseEndpoints(endpoints =>
         {
@@ -253,6 +274,22 @@ public class Startup
                 .WithApiVersionSet(apiVersionSet)
                 .RequireRateLimiting(UserRateLimiter.PolicyName);
 
+            var publicNotVersionedGroupBuilder = endpoints
+                .MapGroup("")
+                .RequireRateLimiting(AnonymousRateLimiter.PolicyName);
+
+            publicNotVersionedGroupBuilder.MapApiPublicEndpoints();
+
+            if (_transport.IsGrpc)
+            {
+                // Browser navigation targets (e.g. the email confirmation link) stay HTTP in every mode.
+                defaultGroutBuilder.MapNavigationEndpoints(minimalApiEndpoints);
+
+                endpoints.MapGrpcModules(_modules);
+
+                return;
+            }
+
             defaultGroutBuilder.MapEndpoints(minimalApiEndpoints);
 
             var publicVersionedGroupBuilder = endpoints
@@ -261,12 +298,6 @@ public class Startup
                 .RequireRateLimiting(AnonymousRateLimiter.PolicyName);
 
             publicVersionedGroupBuilder.MapPublicEndpoints(minimalApiEndpoints);
-
-            var publicNotVersionedGroupBuilder = endpoints
-                .MapGroup("")
-                .RequireRateLimiting(AnonymousRateLimiter.PolicyName);
-
-            publicNotVersionedGroupBuilder.MapApiPublicEndpoints();
 
             endpoints.UseLiveUpdates();
 

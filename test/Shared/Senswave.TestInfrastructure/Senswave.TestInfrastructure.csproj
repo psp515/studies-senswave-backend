@@ -26,6 +26,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\src\Presentation\Senswave.Presentation.Api\Senswave.Api.csproj" />
+	  <ProjectReference Include="..\..\..\src\Shared\Senswave.Contracts\Senswave.Contracts.csproj" />
 	  <ProjectReference Include="..\..\..\src\Shared\Senswave.Infrastructure\Senswave.Infrastructure.csproj" />
 	</ItemGroup>
 
