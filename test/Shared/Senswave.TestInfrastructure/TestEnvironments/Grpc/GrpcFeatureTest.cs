@@ -20,6 +20,8 @@ public class GrpcFeatureTest(WebApplicationFactory<Program> factory) : IClassFix
 
     protected IServiceProvider Services => Factory.Server.Services;
 
+    protected GrpcTestEnvironment Environment => (GrpcTestEnvironment)Factory;
+
     #region Channels
 
     protected GrpcChannel CreateChannel() =>

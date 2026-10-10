@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Senswave.Users.Domain.Entity;
 using Senswave.Users.Domain.Interfaces;
 using Senswave.Users.Domain.Repositories;
@@ -9,6 +10,7 @@ using Senswave.Users.Infrastructure.Consumers;
 using Senswave.Users.Infrastructure.Options;
 using Senswave.Users.Infrastructure.Repositories;
 using Senswave.Users.Infrastructure.Services;
+using Senswave.Users.Infrastructure.Tokens;
 using Senswave.Users.Infrastructure.Workers;
 
 namespace Senswave.Users.Infrastructure;
@@ -23,6 +25,9 @@ public static class UsersExtensions
             .AddEntityFrameworkStores<UsersContext>()
             .AddApiEndpoints()
             .AddDefaultTokenProviders();
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<IAccessTokenIssuer, AccessTokenIssuer>();
 
         services.AddTransient<IEmailSender<User>, HtmlEmailSender>();
         services.AddTransient<IDeleteAccountService, HtmlEmailSender>();

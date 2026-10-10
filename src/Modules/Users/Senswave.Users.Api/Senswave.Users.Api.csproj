@@ -17,6 +17,8 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Shared\Senswave.Abstractions\Senswave.Abstractions.csproj" />
 		<ProjectReference Include="..\..\..\Shared\Senswave.Infrastructure\Senswave.Infrastructure.csproj" />
+		<ProjectReference Include="..\..\..\Shared\Senswave.Contracts\Senswave.Contracts.csproj" />
+		<ProjectReference Include="..\..\..\Shared\Senswave.Infrastructure.Grpc\Senswave.Infrastructure.Grpc.csproj" />
 		<ProjectReference Include="..\..\..\Shared\Senswave.Infrastructure.Web\Senswave.Infrastructure.Web.csproj" />
 		<ProjectReference Include="..\Senswave.Users.Application\Senswave.Users.Application.csproj" />
 		<ProjectReference Include="..\Senswave.Users.Domain\Senswave.Users.Domain.csproj" />

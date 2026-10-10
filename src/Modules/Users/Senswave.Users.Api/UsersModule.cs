@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Senswave.Abstractions.Modules;
 using Senswave.Abstractions.Persistence;
+using Senswave.Infrastructure.Grpc.Modules;
+using Senswave.Users.Api.Grpc;
 using Senswave.Users.Application;
 using Senswave.Users.Domain.Diagnostics;
 using Senswave.Users.Domain.ValueObjects;
@@ -10,7 +12,7 @@ using Senswave.Users.Infrastructure;
 
 namespace Senswave.Users.Api;
 
-public class UsersModule : ISenswaveModule
+public class UsersModule : ISenswaveModule, ISenswaveGrpcModule
 {
     public const string ModuleName = "User";
 
@@ -87,5 +89,11 @@ public class UsersModule : ISenswaveModule
 
         services.AddUsersApplication(configuration)
             .AddUsersInfrastructure(configuration);
+    }
+
+    public void MapGrpcServices(IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGrpcService<AuthGrpcService>();
+        endpoints.MapGrpcService<AccountGrpcService>();
     }
 }
