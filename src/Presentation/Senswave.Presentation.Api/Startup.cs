@@ -26,6 +26,7 @@ using Senswave.Infrastructure.Web.Endpoints;
 using Senswave.Infrastructure.Web.Exceptions;
 using Senswave.LiveUpdates.Api;
 using Senswave.Users.Api;
+using Senswave.Users.Api.Grpc;
 using Senswave.Users.Infrastructure;
 using Senswave.Users.Infrastructure.Middlewares;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -191,6 +192,9 @@ public class Startup
             services.AddGrpcInfrastructure(options =>
             {
                 options.EnableDetailedErrors = _environment.IsDevelopment();
+
+                // The only consent check in gRPC modes; LegalMiddleware is REST-only.
+                options.Interceptors.Add<LegalConsentInterceptor>();
             });
         }
         else

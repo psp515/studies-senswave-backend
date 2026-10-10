@@ -95,5 +95,7 @@ public class UsersModule : ISenswaveModule, ISenswaveGrpcModule
     {
         endpoints.MapGrpcService<AuthGrpcService>();
         endpoints.MapGrpcService<AccountGrpcService>();
+        endpoints.MapGrpcService<UsersGrpcService>();
+        endpoints.MapGrpcService<LegalGrpcService>();
     }
 }

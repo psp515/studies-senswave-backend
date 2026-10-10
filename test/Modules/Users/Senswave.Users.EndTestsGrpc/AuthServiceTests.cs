@@ -3,9 +3,8 @@
 namespace Senswave.Users.EndTestsGrpc;
 
 [Trait("Collection", "EndTestGrpc")]
-public class AuthServiceTests(GrpcTestEnvironment environment) : GrpcFeatureTest(environment)
+public class AuthServiceTests(GrpcTestEnvironment environment) : UsersGrpcFeatureTest(environment)
 {
-    private const string Password = "Abecadło712576!!@#$%$";
     private const string NewPassword = "Zyxwvut712576!!@#$%$";
 
     /// <summary>

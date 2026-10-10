@@ -3,9 +3,8 @@
 namespace Senswave.Users.EndTestsGrpc;
 
 [Trait("Collection", "EndTestGrpc")]
-public class AccountServiceTests(GrpcTestEnvironment environment) : GrpcFeatureTest(environment)
+public class AccountServiceTests(GrpcTestEnvironment environment) : UsersGrpcFeatureTest(environment)
 {
-    private const string Password = "Abecadło712576!!@#$%$";
     private const string NewPassword = "Zyxwvut712576!!@#$%$";
 
     /// <summary>
@@ -14,15 +13,8 @@ public class AccountServiceTests(GrpcTestEnvironment environment) : GrpcFeatureT
     [Fact]
     public async Task AccountLifecycle()
     {
-        // Arrange: a fresh confirmed user, so the seeded users stay untouched.
-        var email = $"{Guid.NewGuid()}@test.com";
-        var emails = new EmailCapture(Environment, email);
-        var auth = new AuthService.AuthServiceClient(CreateChannel());
-
-        await auth.RegisterAsync(new RegisterRequest { Email = email, Password = Password });
-        var (userId, code) = emails.ConfirmationLinkQuery();
-        await auth.ConfirmEmailAsync(new ConfirmEmailRequest { UserId = userId, Code = code });
-
+        // Arrange
+        var email = await RegisterConfirmedUserAsync();
         var channel = await CreateAuthorizedChannelWithoutConsent(email, Password);
         var client = new AccountService.AccountServiceClient(channel);
 
