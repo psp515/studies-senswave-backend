@@ -1,117 +1,65 @@
-# Spec D — REST Baseline
+# Spec D — Comparison Profile (REST baseline)
 
-**Branch:** `main/rest`, branched from `main`, **never merged**
-**Depends on:** nothing
-**Status:** design approved 2026-09-16
+**Branch:** one short-lived branch per step, each merged to `main` by its own PR after owner review — see Spec A, "Delivery"
+**Depends on:** Spec A (transport switch). Spec B for the `GrpcWeb` run.
+**Status:** design approved 2026-09-16; revised 2026-10-10. Replaces the never-merged `main/rest` branch with a configuration profile and a test filter.
 
 ## Purpose
 
-Provide a REST control branch that can be compared fairly against `main/grpc` and `main/grpc-web`. The gRPC branches lose rate limiting on their converted surface as an unavoidable consequence of the transport change, and they trim their EndTests to success paths only. For a comparison to mean anything, the REST branch must carry the same two properties.
+Make REST, gRPC, and gRPC-Web comparable on equal terms, from one commit.
 
-So this branch keeps all 78 REST endpoints exactly as they are, removes rate limiting entirely, and trims its EndTests by the same rule the gRPC branches use.
+The original design kept a separate, never-merged `main/rest` branch that deleted rate limiting and deleted failure-path EndTests, so REST would match the gRPC branches. With the transport switch (Spec A), all three transports live in one build, so the same two equalizations become **configuration and test filtering** instead of deletions:
 
-This branch is a measurement artifact. It stays open indefinitely and is never merged to `main`. Nothing on `main` changes because of it.
+| Difference to equalize | Old approach | New approach |
+|---|---|---|
+| gRPC methods are unthrottled | delete rate limiting on `main/rest` | `RateLimiter:Enabled=false` in comparison runs |
+| gRPC suites are success-path only | delete REST failure tests on `main/rest` | tag REST failure tests, filter them out in comparison runs |
+| REST must stay frozen while gRPC evolves | separate branch, rebased | same commit; only `Transport:Mode` differs |
 
-## Scope
+Nothing is deleted. `main` keeps rate limiting on by default and keeps its full test suite.
 
-In scope:
+## Deliverable 1 — rate limiting as a switch
 
-- Complete removal of rate limiting from the application and from the test infrastructure.
-- Trimming EndTests to success paths only, by the same rule as Spec A.
+`RateLimitersOptions.Enabled` (`RateLimiter:Enabled` in `appsettings.json`) already exists, and `Startup.Configure` already calls `UseRateLimiter()` only when it is true. With the middleware absent, the `RequireRateLimiting(...)` metadata on endpoint groups is inert. So **no code change is needed to disable rate limiting.** Comparison runs set `RateLimiter__Enabled=false`.
 
-Out of scope:
+Verify, rather than assume, that with `Enabled=false`:
 
-- Any change to endpoint behavior, routing, DTOs, or handlers. All 78 endpoints stay exactly as they are.
-- The SignalR live-updates hub. It stays on this branch — it is the baseline that `main/grpc` replaces with a streaming rpc. Do not touch `Senswave.LiveUpdates.Api` beyond the EndTest trimming below.
-- Anything gRPC-related. This branch never sees a `.proto` file.
-- Merging. See "Branch lifecycle".
+- Startup does not throw. `AddRateLimiters` still registers policies, and `RequireRateLimiting` with no middleware must be a no-op.
+- The `RateLimiter/` EndTests are not run in comparison runs. They assert throttling and would fail. They live in the limit environment, which sets its own options, so this is covered by the filter below.
 
-## Deliverable 1 — remove rate limiting
-
-### Application code
-
-Delete `src/Presentation/Senswave.Presentation.Api/RateLimiters/` in full:
-
-```
-RateLimiters/
-  RateLimiterExtensions.cs
-  RateLimitersOptions.cs
-  Anonymous/AnonymousRateLimiter.cs
-  Anonymous/AnonymousRateLimiterOptions.cs
-  User/UserRateLimiter.cs
-  User/UserRateLimiterOptions.cs
-```
-
-In `src/Presentation/Senswave.Presentation.Api/Startup.cs`:
-
-- Remove `services.AddRateLimiters(_configuration);` from `ConfigureServices`.
-- Remove the `IOptions<RateLimitersOptions> rateLimitingOptions` parameter from `Configure` and the conditional `app.UseRateLimiter();` it guards.
-- Remove every `RequireRateLimiting(...)` call in the `UseEndpoints` callback. Three groups use it: the default versioned group with `UserRateLimiter.PolicyName`, and the two public groups with `AnonymousRateLimiter.PolicyName`. The groups themselves stay — they carry versioning and routing, not just throttling.
-- Remove the `AnonymousRateLimiter.PolicyName` argument from `endpoints.UseAuthEndpoints(...)`. That method's signature takes a policy name; simplify it in `Senswave.Users.Api/UsersModuleExtensions.cs` to take none.
-- Remove the now-unused `using Senswave.Api.RateLimiters...` directives.
-
-### Configuration
-
-Remove the rate limiter configuration sections from `appsettings.json` and every environment-specific variant. Search for the option class names to find them, since the section keys are bound by name.
-
-### Test infrastructure
-
-`test/Shared/Senswave.TestInfrastructure/TestEnvironments/Base/BaseTestEnvironment.cs` imports `Senswave.Api.RateLimiters.Anonymous` and `Senswave.Api.RateLimiters.User` and configures limiter options for the test host. Remove those imports and the option overrides.
-
-Delete the dedicated limit test environment, which exists only to exercise throttling:
-
-```
-test/Shared/Senswave.TestInfrastructure/TestEnvironments/Limit/
-  LimitFeatureTest.cs
-  LimitTestCollection.cs
-  LimitTestEnvironment.cs
-```
-
-Before deleting, grep for `LimitFeatureTest` and `LimitTestEnvironment` across `test/`. If any test outside the rate limiter suite derives from them, that test needs rehoming onto `BaseFeatureTest` rather than the environment being kept.
-
-### Rate limiter tests
-
-Delete:
-
-```
-test/Presentation/Senswave.Api.EndTests/Senswave.Presentation.Api.EndTests/RateLimiter/
-  AnnonymousRateLimiterTests.cs
-  UserRateLimiterTests.cs
-```
+Rate limiting may be disabled in any environment (decided 2026-10-10); there is no production guard.
 
 ### What stays
 
-`Senswave.LiveUpdates.Api` has its own rate limiter — `IRateLimiterService` / `RateLimitingService`, configured through `LiveUpdatesOptions.RateLimiter` and keyed by SignalR connection id. **Keep it.** It is module business logic, not the ASP.NET Core rate limiter, and `main/grpc` keeps it too. Removing it here would make the branches diverge on something neither branch's design intends to change.
+`Senswave.LiveUpdates.Api` has its own `IRateLimiterService`, configured through `LiveUpdatesOptions.RateLimiter`. It is module business logic, not the ASP.NET Core rate limiter. It is active in `Rest` mode only, because the gRPC live-updates path does not use it (Spec A). Remove nothing.
 
-The distinction to apply: remove what `AddRateLimiters` / `UseRateLimiter` / `RequireRateLimiting` provides. Leave anything a module implements itself.
+## Deliverable 2 — tag failure-path REST tests
 
-### Packages
+Apply the classification rule the gRPC suites are written to, but **tag instead of delete**:
 
-After the removal, check whether any package in `Directory.Packages.props` becomes unreferenced. Rate limiting in ASP.NET Core is in-framework, so most likely nothing drops out. Do not remove a package without confirming it has no remaining reference — `AGENTS.md` forbids incidental dependency changes.
+> A test is a failure-path test if what it is named for and proving is a refusal: its subject assertion is a non-success status code. Arrange-step successes do not count.
 
-## Deliverable 2 — trim EndTests to success paths
+Tag each such test method with:
 
-Apply the identical rule Spec A applies, so the two branches' suites are comparable:
-
-> A test survives if its assertion is about a successful call, or about state observed after a successful call. A test whose only assertion is a non-success status code is deleted, not rewritten.
+```csharp
+[Trait("Category", "FailurePath")]
+```
 
 Worked example, `test/Modules/Devices/Senswave.Devices.EndTests/Base/Devices/CreateDeviceTest.cs`:
 
-| Test | Assertion | Fate |
+| Test | Assertion | Tag |
 |---|---|---|
-| `ShouldBeSecuredEndpoint` | `Unauthorized` | delete |
-| `OwnerCanCreateDevice` | `Created` | keep |
-| `OwnerOfDeviceIsSetCorrectly` | `Created` + DB state | keep |
-| `CannotCreateDeviceWithDuplicateName` | `Created` then `Conflict` | delete |
-| `MaliciousCannotCreateDevice` | `BadRequest` | delete |
-| `FriendCanCreateDevice` | `Created` | keep |
-| `FriendCanNotCreateDevice` | `BadRequest` | delete |
+| `ShouldBeSecuredEndpoint` | `Unauthorized` | `FailurePath` |
+| `OwnerCanCreateDevice` | `Created` | — |
+| `OwnerOfDeviceIsSetCorrectly` | `Created` + DB state | — |
+| `CannotCreateDeviceWithDuplicateName` | `Created` then `Conflict` | `FailurePath` (the success is arrange, not subject) |
+| `MaliciousCannotCreateDevice` | `BadRequest` | `FailurePath` |
+| `FriendCanCreateDevice` | `Created` | — |
+| `FriendCanNotCreateDevice` | `BadRequest` | `FailurePath` |
 
-`CannotCreateDeviceWithDuplicateName` is deleted even though it contains a success assertion, because the success is arrange, not the subject. Judge by what the test is named for and what it is proving.
+Where a `[Theory]` mixes positive and negative privilege cases (for example via `NotManageDevicePrivileges` and `DisplayDevicePrivileges` on `BaseFeatureTest`), a trait cannot apply per data row. Split the theory into a success theory and a refusal theory, tag the refusal one, and leave assertions unchanged. This is the only structural edit permitted to existing tests in this spec.
 
-Where a `[Theory]` is parameterized over privileges — `NotManageDevicePrivileges`, `DisplayDevicePrivileges` and similar helpers on `BaseFeatureTest` — and the negative privileges exist only to assert refusal, remove those cases and keep the positive ones. If a data source becomes unused, delete it.
-
-Apply this across every EndTest project:
+Apply across:
 
 ```
 test/Modules/Automations/Senswave.Automations.EndTests
@@ -124,39 +72,59 @@ test/Modules/Senswave.Modules.EndTests
 test/Presentation/Senswave.Api.EndTests
 ```
 
-Unit tests and integration tests are **not** trimmed, matching Spec A, which leaves them untouched.
+The `RateLimiter/` tests in `Senswave.Presentation.Api.EndTests` are tagged `[Trait("Category", "RateLimiting")]` at class level, since they test a feature comparison runs disable.
+
+Unit and integration tests are not tagged; comparison runs exclude them by project.
+
+## Deliverable 3 — comparison runbook
+
+Add `docs/comparison.md` describing how to produce comparable runs. The essentials:
+
+```bash
+# Test-suite comparison (same commit). Each transport has its own EndTest projects:
+#   REST:     Senswave.<Module>.EndTests          (filter out failure paths and rate limiter tests)
+#   gRPC:     Senswave.<Module>.EndTestsGrpc      (success-only by construction, no filter)
+#   gRPC-Web: Senswave.<Module>.EndTestsGrpcWeb   (success-only by construction, no filter)
+dotnet test test/Modules/Devices/Senswave.Devices.EndTests --filter "Category!=FailurePath&Category!=RateLimiting"
+dotnet test test/Modules/Devices/Senswave.Devices.EndTestsGrpc
+dotnet test test/Modules/Devices/Senswave.Devices.EndTestsGrpcWeb
+```
+
+```bash
+# Running instance for load / latency comparison
+Transport__Mode=Rest     RateLimiter__Enabled=false
+Transport__Mode=Grpc     RateLimiter__Enabled=false
+Transport__Mode=GrpcWeb  RateLimiter__Enabled=false
+```
+
+The runbook also records:
+
+- The commit SHA every run used. All runs in one comparison must share it.
+- That traces are separable by the `senswave.transport` resource attribute (Spec A).
+- That coverage is collected per suite with `dotnet-coverage collect` and the same filter, then reported side by side.
+- The known behavioral differences between modes that a reader of results must know: live-update error semantics (Spec A), auth running over the selected transport in every mode (gRPC login issues the same tokens as REST), Google login existing only in `Rest` mode, and gRPC modes being unthrottled.
 
 ## Testing and verification
 
-Per `AGENTS.md`:
-
 1. `dotnet build Senswave.sln`
-2. `dotnet test` across all modules
-3. Coverage: `dotnet-coverage collect "dotnet test" -f cobertura -o coverage.cobertura.xml` then `reportgenerator -reports:coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html`
+2. `dotnet test` unfiltered: green, and the same test count as before tagging, plus any splits of mixed theories.
+3. Each comparison filter above runs green.
+4. Run the API with `RateLimiter__Enabled=false` and confirm it starts and serves.
+5. Coverage: unfiltered (should match `main`) and per comparison filter. Report all of them. If REST-filtered coverage differs notably from gRPC-filtered coverage, that difference is a finding worth writing down.
 
-Coverage will drop, for the same reason it drops on `main/grpc`. Report the number. Do not reinstate failure tests to recover it — that would break the comparison this branch exists to enable. If the drop is worse here than on `main/grpc`, that difference is itself a finding worth writing down.
-
-Architecture tests in `test/Shared/Senswave.ArchitectureTests` should pass unchanged, since no endpoint convention changes on this branch. If one fails, it was asserting something about rate limiting, and it should be deleted along with the feature.
-
-## Branch lifecycle
-
-`main/rest` is never merged into `main`. It is cut from `main` at the point the comparison begins and is left open. If `main` moves and the comparison needs refreshing, rebase this branch rather than merging it back.
-
-`main` therefore keeps rate limiting. So does `main/grpc`, on the REST endpoints that survive there. That asymmetry is deliberate: `main/grpc` measures what happens when a gRPC surface has no throttling while REST auth endpoints keep it, and `main/rest` measures a REST surface with none at all.
+Architecture tests are unaffected.
 
 ## Known gaps
 
-- **The API on this branch is unthrottled**, including anonymous auth endpoints. This branch must never be deployed to staging or production. Say so in the PR description and in the branch description.
-- **Coverage drops** from removing failure-path tests. Expected and accepted.
+- **Tagging is manual and can drift.** A new REST failure test without the trait silently enters comparison runs. Mitigate by documenting the rule in CLAUDE.md under conventions, so new tests follow it.
+- **The suites are not equal in size.** The gRPC and gRPC-Web projects are deliberately minimal smoke suites (Spec A, Spec B), while the filtered REST suite keeps every success-path test. Compare runtime behavior (latency, throughput, payload size) on running instances; treat test-suite comparison as "does each transport work", not as like-for-like coverage. Report counts alongside results.
 
 ## Acceptance criteria
 
-- No reference to ASP.NET Core rate limiting remains anywhere in `src/` or `test/`: no `RateLimiters` folder, no `UseRateLimiter`, no `RequireRateLimiting`, no limiter options in configuration, no limit test environment, no limiter tests.
-- The LiveUpdates module's own rate limiter is still present and still registered.
-- The SignalR hub is unchanged.
-- All 78 REST endpoints are unchanged in routing, DTOs, and behavior.
-- EndTests are trimmed by the stated rule; unit and integration tests are untouched.
-- `dotnet build Senswave.sln` is green.
-- `dotnet test` is green.
-- Coverage is measured and reported, with no failure tests reinstated to prop it up.
-- The branch carries a clear "do not deploy" note.
+- No production code or test is deleted.
+- Comparison runs disable ASP.NET Core rate limiting by configuration alone, in any environment.
+- The LiveUpdates module's own rate limiter is untouched and active in `Rest` mode.
+- Every REST failure-path EndTest carries `Category=FailurePath`; rate limiter tests carry `Category=RateLimiting`.
+- `docs/comparison.md` exists with the filters, environment settings, and reporting rules.
+- `dotnet build Senswave.sln` and unfiltered `dotnet test` are green; each comparison filter is green.
+- Coverage is reported unfiltered and per comparison filter.

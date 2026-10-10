@@ -1,65 +1,88 @@
 # Spec 0 — gRPC Contracts and Plumbing
 
-**Branch:** `main/grpc` (phase 1 — this spec lands first, then Spec A continues on the same branch)
+**Branch:** one short-lived branch per step, each merged to `main` by its own PR after owner review — see Spec A, "Delivery"
 **Depends on:** nothing
-**Status:** design approved 2026-09-16
+**Status:** design approved 2026-09-16; revised 2026-10-10 for the single-branch, config-switched transport design. Contracts for 73 operations landed in `605afa2`. The Users proto additions, Deliverables 2–3, and the guard test remain, and all of them ship together as PR 1.
 
 ## Purpose
 
 Introduce the protobuf contracts and the shared gRPC infrastructure that Spec A (gRPC services) and Spec B (gRPC-Web) both build on. This spec adds no user-visible behavior: after it lands, the solution still serves exactly the REST surface it serves today. Its success criterion is that `dotnet build Senswave.sln` and the full existing test suite stay green while the generated protobuf types and the shared interceptors become available to every module.
 
-Splitting this out keeps the contract discussion separate from the service-implementation work. A reviewer of this branch is reviewing API shape, not handler wiring.
+Splitting this out keeps the contract discussion separate from the service-implementation work. A reviewer of this spec is reviewing API shape, not handler wiring.
+
+## Transport switch (context for all four specs)
+
+Senswave serves REST, gRPC, and gRPC-Web from **one codebase on one branch**. Which surface is live is chosen at startup by configuration (`Transport:Mode`, overridable as the environment variable `Transport__Mode`), defined in Spec A. Nothing is deleted to make room for gRPC: the REST endpoints, REST DTOs, and the SignalR hub all stay. This replaces the earlier plan of separate `main/grpc`, `main/grpc-web`, and never-merged `main/rest` branches. A git branch named `main/grpc` cannot coexist with `main` anyway.
+
+Consequences for this spec: none to the contracts. The infrastructure below must be safe to register in every mode, because the host registers it unconditionally and only maps gRPC services when gRPC is selected.
 
 ## Scope
 
 In scope:
 
-- A new shared project holding every `.proto` file and the generated C# types.
-- Protobuf message and service definitions covering the 73 REST endpoints being converted, across five modules.
-- The protobuf contract replacing the SignalR live-updates hub. The replacement is designed and executed in Spec A; only the contract is here.
-- A new shared project holding gRPC cross-cutting infrastructure: error mapping, request context, telemetry registration.
+- A new shared project holding every `.proto` file and the generated C# types. **Done (`605afa2`).**
+- Protobuf definitions for every operation with a gRPC equivalent. **Mostly done.** `605afa2` covers 73 operations. The Users additions below (`UpdateSettings`, legal, auth, account management) are part of this spec's remaining work.
+- The protobuf contract for the gRPC live-updates stream, the gRPC counterpart of the SignalR hub. **Done.**
+- A new shared project holding gRPC cross-cutting infrastructure: error mapping and telemetry.
 - Central package registration for the gRPC dependency set.
 
 Out of scope (deliberately):
 
-- Implementing any gRPC service. That is Spec A.
-- Removing or changing any existing REST endpoint. That is Spec A.
+- Implementing any gRPC service, and the transport switch itself. That is Spec A.
 - gRPC-Web transport. That is Spec B.
 - Rate limiting for gRPC methods. Known gap, documented below.
-- Everything about the SignalR replacement other than the proto file: the streaming service, the subscription registry that replaces SignalR groups, deleting the hub, and removing the SignalR packages. All of that is designed and executed in Spec A.
 
 ## Endpoint inventory
 
-The proto surface must cover these, derived by enumerating `IEndpoint` implementations:
+*Revised 2026-10-10.* Every API operation clients use gets a gRPC equivalent, including legal documents and the ASP.NET Identity API. There are two exceptions. **Browser navigation targets** (URLs a user opens from an email, which cannot make gRPC calls) stay HTTP in every mode. **Google login** is not used and gets no gRPC equivalent.
 
-| Module | `IEndpoint` today | Converted | Stays REST |
+The host's `MapApiPublicEndpoints` (`.well-known` app-link files and `GET api/version`) is not `IEndpoint`. It stays HTTP in every mode and gets no gRPC equivalent.
+
+`IEndpoint` implementations (recounted 2026-10-10; the original count missed `Users/UpdateSettings`):
+
+| Module | `IEndpoint` | gRPC equivalent | REST in every mode |
 |---|---|---|---|
 | `Senswave.Devices.Api` | 28 | 28 | 0 |
 | `Senswave.Homes.Api` | 18 | 18 | 0 |
 | `Senswave.DataSources.Api` | 14 | 14 | 0 |
 | `Senswave.Automations.Api` | 10 | 10 | 0 |
-| `Senswave.Users.Api` | 8 | 3 | 5 |
-| **Total** | **78** | **73** | **5** |
+| `Senswave.Users.Api` | 9 | 6 | 3 |
+| **Total** | **79** | **76** | **3** |
 
-The five Users endpoints that stay REST are:
+Users, endpoint by endpoint:
 
-- `Auth/ConfirmEmailV2/ConfirmEmailV2Endpoint.cs`
-- `Auth/Google/GoogleAuthEndpoint.cs`
-- `Auth/GoogleV2/GoogleJwtAuthEndpoint.cs`
-- `Legal/GetPrivacyPolicy/GetPrivacyPolicyEndpoint.cs` (`IPublicEndpoint`)
-- `Legal/GetTermsAndConditions/GetTermsAndConditionsEndpoint.cs` (`IPublicEndpoint`)
+| Endpoint | gRPC |
+|---|---|
+| `Users/GetUser`, `Users/CreateConsents`, `Users/DeleteAccount` | `UsersService` (landed) |
+| `Users/UpdateSettings` | `UsersService.UpdateSettings` (**to add**) |
+| `Legal/GetPrivacyPolicy`, `Legal/GetTermsAndConditions` (`IPublicEndpoint`) | `LegalService` (**to add**), anonymous |
+| `Auth/Google/GoogleAuthEndpoint`, `Auth/GoogleV2/GoogleJwtAuthEndpoint` | **None.** Google login is not used by clients (decided 2026-10-10). REST-only, and not mapped in gRPC modes. |
+| `Auth/ConfirmEmailV2/ConfirmEmailV2Endpoint` | **REST in every mode.** It is the link in the confirmation email and answers with a redirect. A gRPC `AuthService.ConfirmEmail` also exists for clients that capture the link via deep link. |
 
-The three converted Users endpoints are `Users/CreateConsents`, `Users/DeleteAccount`, and `Users/GetUser`.
+### ASP.NET Identity API
 
-Separately, `UsersModuleExtensions.UseAuthEndpoints` maps the ASP.NET Identity API via `MapIdentityApi<User>()` under `api/v1/auth`. Those endpoints are not `IEndpoint` implementations, are not counted above, and stay REST. They are framework-generated and have no gRPC equivalent.
+`UsersModuleExtensions.UseAuthEndpoints` maps `MapIdentityApi<User>()` under `api/v1/auth`. These are framework-generated, not `IEndpoint`. Each gets a gRPC equivalent, implemented in Spec A by porting the framework's logic onto `UserManager` / `SignInManager`:
 
-`Senswave.LiveUpdates.Api` implements no `IEndpoint`, so it appears nowhere in this table. It exposes a SignalR hub instead, which Spec A replaces with the `LiveUpdatesService` streaming contract defined here.
+| Identity route | gRPC |
+|---|---|
+| `POST /register` | `AuthService.Register` |
+| `POST /login` (bearer only; cookie modes not ported) | `AuthService.Login` |
+| `POST /refresh` | `AuthService.Refresh` |
+| `GET /confirmEmail` | `AuthService.ConfirmEmail`; the REST route is also a navigation target (see Spec A) |
+| `POST /resendConfirmationEmail` | `AuthService.ResendConfirmationEmail` |
+| `POST /forgotPassword` | `AuthService.ForgotPassword` |
+| `POST /resetPassword` | `AuthService.ResetPassword` |
+| `POST /manage/2fa` | `AccountService.TwoFactor` |
+| `GET /manage/info` | `AccountService.GetInfo` |
+| `POST /manage/info` | `AccountService.UpdateInfo` |
 
-## Deliverable 1 — `src/Shared/Senswave.Contracts`
+`Senswave.LiveUpdates.Api` implements no `IEndpoint`. It exposes a SignalR hub, which Spec A keeps for REST mode and pairs with the `LiveUpdatesService` streaming contract for gRPC modes.
 
-A new `net10.0` class library, added to `Senswave.sln`, targeting `Debug;Release;Tests` configurations to match sibling projects.
+## Deliverable 1 — `src/Shared/Senswave.Contracts` (mostly done)
 
-Layout:
+A `net10.0` class library in `Senswave.sln`, targeting `Debug;Release;Tests`.
+
+Layout (landed, plus the Users additions marked):
 
 ```
 src/Shared/Senswave.Contracts/
@@ -74,13 +97,18 @@ src/Shared/Senswave.Contracts/
     devices/v1/operations.proto
     devices/v1/sharing.proto
     homes/v1/homes.proto
-    users/v1/users.proto
+    homes/v1/rooms.proto
+    homes/v1/sharing.proto
+    users/v1/users.proto        (add UpdateSettings)
+    users/v1/legal.proto        (to add: LegalService)
+    users/v1/auth.proto         (to add: AuthService)
+    users/v1/account.proto      (to add: AccountService)
     liveupdates/v1/liveupdates.proto
 ```
 
-The Devices module is split across several proto files because it carries 28 endpoints under five distinct tags (`Devices`, `Dashboards`, `Widgets`, `Operations`, `Sharing`, per the constants on `DevicesModule`). One proto file per tag keeps each file small enough to read in one sitting. Other modules get a single file unless they exceed roughly 15 rpcs, in which case split them the same way.
+Devices is split per tag (`Devices`, `Dashboards`, `Widgets`, `Operations`, `Sharing`). Homes, at 18 rpcs, is split the same way (`homes`, `rooms`, `sharing`) under the "more than roughly 15 rpcs" rule.
 
-The csproj registers every proto with `GrpcServices="Both"`, so a single compilation produces both the server base classes that Spec A derives from and the typed clients that the EndTests and Spec B consume. This avoids a second generation pass and guarantees client and server never drift.
+The csproj registers every proto with `GrpcServices="Both"`, so one compilation produces the server base classes Spec A derives from and the typed clients the EndTests and Spec B consume.
 
 ```xml
 <ItemGroup>
@@ -90,30 +118,28 @@ The csproj registers every proto with `GrpcServices="Both"`, so a single compila
 
 ### Proto conventions
 
-These conventions are binding; the implementation plan should treat a violation as a review blocker.
+These conventions are binding; treat a violation as a review blocker.
 
-- **Package naming:** `senswave.<module>.v1` — for example `senswave.devices.v1`. The version lives in the package, which is how this surface replaces `Asp.Versioning`. The REST surface that survives keeps `Asp.Versioning` unchanged.
-- **C# namespace:** set `option csharp_namespace = "Senswave.Contracts.Devices.V1";` on every file so generated types do not collide with the hand-written module types.
-- **Service naming:** one service per proto file, named after the tag — `DevicesService`, `DashboardsService`, `HomesService`, and so on.
-- **Rpc naming:** the existing feature folder name, unchanged. `CreateDevice`, `DisplayDashboards`, `SetWidgetOnDashboard`. This keeps a one-to-one trace from proto to the existing `IEndpoint` class and to the MediatR command it dispatches.
-- **Message naming:** `<Rpc>Request` and `<Rpc>Response`. Every rpc declares both, even when one side is empty, so fields can be added later without a signature change.
-- **Field derivation:** fields come from the existing `*Request` / `*Response` DTOs in each module's `Api` project. `AGENTS.md` forbids renaming or removing fields on the REST contract; the proto surface is a **new** contract, so it is free to use idiomatic protobuf naming (`lower_snake_case` fields). Where a name changes, the mapping is explicit in the `*Extensions` class that Spec A writes — the same pattern the REST DTOs already use.
-- **Identifiers:** `Guid` maps to `string` carrying the canonical `D` format. Do not invent a custom UUID message.
+- **Package naming:** `senswave.<module>.v1`. The version lives in the package. The REST surface keeps `Asp.Versioning` unchanged.
+- **C# namespace:** `option csharp_namespace = "Senswave.Contracts.<Module>.V1";` on every file, so generated types do not collide with hand-written module types.
+- **Service naming:** one service per proto file, named after the tag: `DevicesService`, `DashboardsService`, `HomesService`, and so on.
+- **Rpc naming:** the existing feature folder name, unchanged: `CreateDevice`, `DisplayDashboards`, `SetWidgetOnDashboard`. This keeps a one-to-one trace from proto to `IEndpoint` class to MediatR command.
+- **Message naming:** `<Rpc>Request` and `<Rpc>Response`. Every rpc declares both, even when one side is empty.
+- **Field derivation:** fields come from the existing REST `*Request` / `*Response` DTOs. The CLAUDE.md rule against renaming REST DTO fields applies to the REST DTOs, which stay. The proto surface is a separate contract, so it uses idiomatic `lower_snake_case`. Where a name differs, the mapping is explicit in the gRPC `*Extensions` class Spec A writes.
+- **Identifiers:** `Guid` maps to `string` in canonical `D` format. No custom UUID message.
 - **Timestamps:** `google.protobuf.Timestamp`.
-- **Optional values:** use `optional` on proto3 scalar fields where the REST DTO is nullable, so the distinction between "absent" and "default" survives.
+- **Optional values:** `optional` on proto3 scalars where the REST DTO is nullable.
 - **Enums:** mirror the domain enums, with the zero value suffixed `_UNSPECIFIED`.
 
 ### `common/v1/common.proto`
 
-Holds types shared across modules so they are defined once:
-
-- `IdResponse` — a single `string id`, matching the existing `IdResponse` used throughout the EndTests.
-- `Error` and `ErrorType` — mirroring `Senswave.Abstractions.Resulting.Error` and `ErrorType`, used in the error trailer described below.
-- `Empty` is **not** redefined; use `google.protobuf.Empty`.
+- `IdResponse`: a single `string id`.
+- `Error` and `ErrorType`: mirroring `Senswave.Abstractions.Resulting.Error` and `ErrorType`, used in the error trailer described below.
+- `Empty` is not redefined; use `google.protobuf.Empty`.
 
 ### `liveupdates/v1/liveupdates.proto`
 
-The one streaming contract in the set, replacing the SignalR hub:
+The one streaming contract:
 
 ```proto
 service LiveUpdatesService {
@@ -141,23 +167,43 @@ message DevicePresenceUpdate { string device_id = 1; }
 message DataSourceStateUpdate { string data_source_id = 1; string state = 2; }
 ```
 
-Two properties of this contract are binding on the rest of the effort, so they are settled here rather than in Spec A.
+**Server streaming only.** gRPC-Web supports unary and server-streaming calls only. No rpc anywhere in the contract set may use client or bidirectional streaming. This is a transport limit, not a preference.
 
-**Server streaming only.** gRPC-Web supports unary and server-streaming calls, and nothing else — client streaming and bidirectional streaming do not work in any browser. Spec B exists for browser reach, so no rpc anywhere in this contract set may use client or bidirectional streaming. This is a transport limit, not a preference.
+**The `oneof` is the typed counterpart of `Update(string updateType, JsonNode data)`.** The SignalR hub keeps its magic-string update kinds in REST mode. The field shapes above come directly from the `JsonObject` construction in `DevicesUpdateService` and `DataSourcesUpdateService`.
 
-The hub's shape already fits. `LiveUpdatesHub.Initialize(homeReferenceId)` is called once per home and re-invoked "each time someone switches home in app", per its own documentation. A single server-streaming call carrying the home id says the same thing: switching home means cancelling the stream and opening a new one.
+### Users additions: `legal.proto`, `auth.proto`, `account.proto`, `UpdateSettings`
 
-**The `oneof` replaces `Update(string updateType, JsonNode data)`.** Today the update kind is a magic string — `"widgetsActionUpdate"`, `"deviceTileActionUpdate"`, `"devicePresenceUpdate"`, `"dataSourceStateUpdate"` — and the payload is an untyped `JsonObject` built by hand in `DevicesUpdateService` and `DataSourcesUpdateService`. Field shapes above come directly from that existing construction: `UpdateWidgets` sends `deviceId` plus an `items` array of widget id strings; `UpdateDeviceTile` and `UpdateDevicePresence` send `deviceId` alone; `UpdateDataSourceState` sends `dataSourceId` and `state`.
+All are in package `senswave.users.v1`. Fields derive from the REST DTOs (`GetPrivacyPolicyResponse`, `GetTermsAndConditionsResponse`, `UpdateSettingsRequest`) and from the Identity API DTOs in `Microsoft.AspNetCore.Identity.Data` (`RegisterRequest`, `LoginRequest`, `RefreshRequest`, `ResendConfirmationEmailRequest`, `ForgotPasswordRequest`, `ResetPasswordRequest`, `TwoFactorRequest`/`TwoFactorResponse`, `InfoRequest`/`InfoResponse`), using the same conventions as above.
+
+- **`LegalService`**: `GetPrivacyPolicy` and `GetTermsAndConditions`, each returning `id`, `version`, `summary`, `content`, and `created_at_utc` (`Timestamp`).
+- **`AuthService`**: `Register`, `Login`, `Refresh`, `ConfirmEmail`, `ResendConfirmationEmail`, `ForgotPassword`, `ResetPassword`.
+- **`AccountService`** (authenticated): `GetInfo`, `UpdateInfo`, `TwoFactor`.
+- **`UsersService.UpdateSettings`**: added to the existing service.
+
+`Login` and `Refresh` return one shared message mirroring the framework's `AccessTokenResponse`:
+
+```proto
+message AccessTokenResponse {
+  string token_type = 1;      // "Bearer"
+  string access_token = 2;
+  int64 expires_in = 3;       // seconds
+  string refresh_token = 4;
+}
+```
+
+`Login` carries optional `two_factor_code` and `two_factor_recovery_code`, as Identity's `LoginRequest` does. The Identity API's cookie modes (`useCookies`, `useSessionCookies`) have no gRPC equivalent and are not modelled.
+
+Each new file has a single service named after the file, following the one-service-per-file convention.
 
 ## Deliverable 2 — `src/Shared/Senswave.Infrastructure.Grpc`
 
-A new `net10.0` class library, sibling to the existing `Senswave.Infrastructure.Web`. It exists so that Spec A's module projects depend on gRPC plumbing without depending on the web host, matching how `Senswave.Infrastructure.Web` is structured today.
+A new `net10.0` class library, sibling to `Senswave.Infrastructure.Web`, added to `Senswave.sln` with `Debug;Release;Tests` configurations. Module `Api` projects depend on it for gRPC plumbing.
 
 ### `ErrorHandlingInterceptor`
 
-A server interceptor that translates the existing `Result` failure model into gRPC status codes. Today `ResultExtensions.ToResultsDetails` builds an `ErrorProblemDetails` from `ErrorType` via `ErrorTypeExtensions.GetStatusCode`. The gRPC equivalent maps the same enum to `StatusCode`:
+A server interceptor translating the `Result` failure model into gRPC status codes. The mapping parallels `ErrorTypeExtensions.GetStatusCode`:
 
-| `ErrorType` | HTTP today | gRPC `StatusCode` |
+| `ErrorType` | HTTP | gRPC `StatusCode` |
 |---|---|---|
 | `Validation` | 400 | `InvalidArgument` |
 | `NotFound` | 404 | `NotFound` |
@@ -165,15 +211,17 @@ A server interceptor that translates the existing `Result` failure model into gR
 | `Failure` | 400 | `FailedPrecondition` |
 | `ServerFail` | 500 | `Internal` |
 
-`Failure` maps to `FailedPrecondition` rather than `InvalidArgument` because the existing code uses it for business-rule refusals — for example a user without the `Manage` privilege attempting a write — not for malformed input. Keeping the two distinct preserves information the HTTP surface loses by collapsing both to 400.
+`Failure` maps to `FailedPrecondition` because the code uses it for business-rule refusals, such as a user without the `Manage` privilege attempting a write, not for malformed input.
 
 The interceptor:
 
-1. Wraps `UnaryServerHandler`.
-2. Catches `SenswaveRpcException` (a thin exception carrying `Result` errors, defined in this project) and converts it to an `RpcException` whose `Status.Detail` is the error title and whose trailers carry the serialized `Error[]` plus the current trace id, mirroring the `errors` and `traceId` fields of `ErrorProblemDetails`.
-3. Lets any other exception fall through to the existing `GlobalExceptionHandlerMiddleware` behavior — do not swallow unknown exceptions here.
+1. Wraps `UnaryServerHandler` and `ServerStreamingServerHandler`.
+2. Catches `SenswaveRpcException`, a thin exception carrying `Result` errors defined in this project. It converts the exception to an `RpcException`: `Status.Detail` is the error title, and the trailers carry the serialized `Error[]` (as `common.v1.Error`, binary `-bin` trailer) plus the current trace id. These mirror the `errors` and `traceId` fields of `ErrorProblemDetails`.
+3. Catches every other exception itself. Exceptions thrown in a gRPC service never reach ASP.NET Core's `UseExceptionHandler` / `GlobalExceptionHandlerMiddleware`, because the gRPC framework catches them first and returns `Unknown` without logging them. The interceptor is therefore the gRPC equivalent of `GlobalExceptionHandlerMiddleware`. It logs the exception with the same log line, marks the activity as errored, and throws `RpcException(StatusCode.Internal, "Server Error")` with the trace id in the trailers. The exception message is **not** sent to the client; this deliberately differs from REST, which returns `exception.Message`. `RpcException`s thrown deliberately (for example by the consent interceptor or the live-updates checks) pass through untouched.
 
-Provide `ResultGrpcExtensions.ThrowIfFailure(this Result result)` so service methods read the same way the endpoints read today:
+Enable `GrpcServiceOptions.EnableDetailedErrors` only in Development, mirroring `UseDeveloperExceptionPage`.
+
+`ResultGrpcExtensions.ThrowIfFailure(this Result result)` lets service methods read like the endpoints:
 
 ```csharp
 var result = await mediator.Send(command);
@@ -181,57 +229,60 @@ result.ThrowIfFailure();
 return result.ToCreateDeviceResponse();
 ```
 
-### `GrpcRequestContext`
+### Request context: reuse `UserRequestContext`, no `GrpcRequestContext`
 
-An `IRequestContext` implementation reading the authenticated user from `ServerCallContext.GetHttpContext().User`, mirroring the existing `UserRequestContext` in `Senswave.Infrastructure.Web/Contexts`. Register it so that module handlers, which already depend on `IRequestContext`, work unchanged under gRPC. Read `UserRequestContext` first and reuse its claim-reading logic rather than reimplementing it — if the logic is non-trivial, lift the shared part into `Senswave.Abstractions` instead of duplicating it.
+*Revised.* The original design added a `GrpcRequestContext`. Under the config switch both surfaces share one DI container, so a second `IRequestContext` registration would conflict with the REST one. It is also unnecessary: ASP.NET Core gRPC runs inside the HTTP pipeline, so `IHttpContextAccessor.HttpContext` is populated for gRPC calls. The existing `UserRequestContext` (`Senswave.Infrastructure.Web/Contexts`) therefore returns the correct user id under every transport.
+
+This spec adds no new request context. Spec A's EndTests prove the claim through a success-path assertion that the authenticated user is recorded as owner (the gRPC port of `OwnerOfDeviceIsSetCorrectly`).
 
 ### `GrpcInfrastructureExtensions`
 
-`AddGrpcInfrastructure(this IServiceCollection services)` registering the interceptor and the request context. Spec A calls it from `Startup.ConfigureServices`. This spec adds the method but does not call it, so the registration is dead code on this branch — that is intentional and should be noted in the PR description.
+`AddGrpcInfrastructure(this IServiceCollection services)` calls `services.AddGrpc(o => o.Interceptors.Add<ErrorHandlingInterceptor>())` and registers the interceptor's dependencies. Spec A calls it from `Startup.ConfigureServices` in gRPC modes only. It accepts an optional `Action<GrpcServiceOptions>` so the host can append further interceptors, such as Users' `LegalConsentInterceptor`. This spec adds the method without calling it, so the registration is dead code until Spec A lands. Note that in the PR description.
 
 ### Telemetry
 
-`AGENTS.md` asks for OpenTelemetry in custom code. Server-side gRPC spans already arrive through the existing `OpenTelemetry.Instrumentation.AspNetCore` registration, because ASP.NET Core gRPC is ASP.NET Core routing. Add `OpenTelemetry.Instrumentation.GrpcNetClient` to the tracing builder in `src/Presentation/Senswave.Presentation.Api/Diagnostics/DiagnosticsExtensions.cs` so client-side calls — which the EndTests in Spec A make — produce spans too.
+Server-side gRPC spans already arrive through `OpenTelemetry.Instrumentation.AspNetCore`. Add `OpenTelemetry.Instrumentation.GrpcNetClient` to the tracing builder in `src/Presentation/Senswave.Presentation.Api/Diagnostics/DiagnosticsExtensions.cs`, so client-side calls (which the gRPC EndTests make) produce spans.
 
-Additionally, add an `ActivitySource` in `Senswave.Infrastructure.Grpc` and start an activity in `ErrorHandlingInterceptor` around the handler, tagging the mapped `ErrorType` when a failure is converted. This is the one piece of gRPC behavior that is genuinely custom code rather than framework plumbing, so it is where custom instrumentation earns its place.
+Add an `ActivitySource` in `Senswave.Infrastructure.Grpc` and start an activity in `ErrorHandlingInterceptor` around the handler. Tag the mapped `ErrorType` and gRPC status when a failure is converted, and register the source name with the tracing builder.
 
 ## Deliverable 3 — package registration
 
-Add to `Directory.Packages.props` under a new `<!-- gRPC -->` comment block. Approved on 2026-09-16; `AGENTS.md` otherwise forbids new libraries.
+Add to `Directory.Packages.props` under the `<!-- gRPC -->` block (approved 2026-09-16):
 
-| Package | Used by |
-|---|---|
-| `Grpc.AspNetCore` | Spec A server hosting |
-| `Grpc.Tools` | codegen in `Senswave.Contracts` |
-| `Google.Protobuf` | generated types |
-| `Grpc.Net.Client` | EndTest clients |
-| `Grpc.AspNetCore.Web` | Spec B |
-| `Grpc.Net.Client.Web` | Spec B EndTest clients |
-| `OpenTelemetry.Instrumentation.GrpcNetClient` | client spans |
+| Package | Used by | State |
+|---|---|---|
+| `Grpc.AspNetCore` | server hosting | present |
+| `Grpc.Tools` | codegen in `Senswave.Contracts` | present |
+| `Google.Protobuf` | generated types | present |
+| `Grpc.Net.Client` | EndTest clients | present |
+| `Grpc.AspNetCore.Web` | Spec B | **to add** |
+| `Grpc.Net.Client.Web` | Spec B EndTest clients | **to add** |
+| `OpenTelemetry.Instrumentation.GrpcNetClient` | client spans | **to add** |
 
-Pin versions explicitly, as every other entry in that file does. Do not upgrade any unrelated package while editing this file — `AGENTS.md` forbids incidental upgrades.
+Pin versions explicitly, choosing versions compatible with the existing `Grpc.*` 2.83 line and the existing OpenTelemetry packages. Do not upgrade any unrelated package.
 
 ## Testing
 
-This spec ships no behavior, so it ships no new behavioral tests. Verification is:
+This spec ships no behavior. Verification is:
 
 1. `dotnet build Senswave.sln` succeeds, including generated protobuf sources.
-2. The existing test suite passes unchanged: `dotnet test` across all modules.
-3. `test/Shared/Senswave.ArchitectureTests` still passes. If any existing rule asserts something about the shape of `src/Shared` projects, extend it to cover the two new projects rather than exempting them.
+2. The existing test suite passes unchanged.
+3. `test/Shared/Senswave.ArchitectureTests` still passes. If an existing rule asserts the shape of `src/Shared` projects, extend it to the two new projects rather than exempting them.
 
-Add one unit test project concern to `Senswave.ArchitectureTests` (or the nearest existing home): assert that every `ErrorType` enum value has a gRPC status mapping, so adding a new `ErrorType` later fails the build rather than throwing `InvalidEnumArgumentException` at runtime. The existing `ErrorTypeExtensions` has the same hazard; matching its structure is fine, but the new mapping should be guarded.
+Add one guard test, in `Senswave.ArchitectureTests` or the nearest existing home: every `ErrorType` value other than `None` has a gRPC status mapping. Adding a new `ErrorType` later then fails the build instead of throwing at runtime.
 
 ## Known gaps carried forward
 
-- **Rate limiting does not apply to gRPC.** `UserRateLimiter` and `AnonymousRateLimiter` attach to endpoints through `RequireRateLimiting`, which gRPC method routing does not use. Once Spec A moves module endpoints to gRPC, those methods are unthrottled. The REST endpoints that survive — auth, public, diagnostics — keep `AnonymousRateLimiter`. Accepted deliberately on 2026-09-16.
-- **No JSON transcoding.** Clients that speak neither gRPC nor gRPC-Web have no path to the converted endpoints after Spec A.
+- **Rate limiting does not apply to gRPC.** `UserRateLimiter` and `AnonymousRateLimiter` attach through `RequireRateLimiting`, which gRPC method routing does not use, so every method is unthrottled in gRPC modes. Accepted, auth included (2026-10-10); rate limiting can be disabled in any mode anyway.
+- **No JSON transcoding.** In gRPC modes, clients that speak neither gRPC nor gRPC-Web have no path to module operations. They can use REST mode instead.
 
 ## Acceptance criteria
 
-- `src/Shared/Senswave.Contracts` builds and generates both server and client types for all 73 converted endpoints, plus the `LiveUpdatesService` streaming contract.
-- `LiveUpdatesService` uses server streaming only, with no client-streaming or bidirectional rpc anywhere in the contract set.
-- `src/Shared/Senswave.Infrastructure.Grpc` builds and exposes `ErrorHandlingInterceptor`, `GrpcRequestContext`, `ResultGrpcExtensions`, and `AddGrpcInfrastructure`.
+- `src/Shared/Senswave.Contracts` builds and generates server and client types for all 76 `IEndpoint` operations with a gRPC equivalent, the 10 Identity API equivalents, and `LiveUpdatesService`.
+- `LiveUpdatesService` uses server streaming only; no client-streaming or bidirectional rpc exists. *(met)*
+- `src/Shared/Senswave.Infrastructure.Grpc` builds and exposes `ErrorHandlingInterceptor`, `SenswaveRpcException`, `ResultGrpcExtensions`, and `AddGrpcInfrastructure`.
 - `Directory.Packages.props` carries the seven packages with pinned versions and no unrelated changes.
+- gRPC client instrumentation and the interceptor's `ActivitySource` are registered with tracing.
 - `dotnet build Senswave.sln` is green.
-- `dotnet test` is green with no test modified other than additions.
-- Every `ErrorType` value has an asserted gRPC status mapping.
+- `dotnet test` is green, with no test modified other than additions.
+- Every `ErrorType` value except `None` has an asserted gRPC status mapping.
