@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package senswave.users.v1;
+
+option csharp_namespace = "Senswave.Contracts.Users.V1";
+
+import "google/protobuf/timestamp.proto";
+
+service LegalService {
+  rpc GetPrivacyPolicy(GetPrivacyPolicyRequest) returns (GetPrivacyPolicyResponse);
+  rpc GetTermsAndConditions(GetTermsAndConditionsRequest) returns (GetTermsAndConditionsResponse);
+}
+
+message GetPrivacyPolicyRequest {}
+
+message GetPrivacyPolicyResponse {
+  string id = 1;
+  string version = 2;
+  string summary = 3;
+  string content = 4;
+  google.protobuf.Timestamp created_at_utc = 5;
+}
+
+message GetTermsAndConditionsRequest {}
+
+message GetTermsAndConditionsResponse {
+  string id = 1;
+  string version = 2;
+  string summary = 3;
+  string content = 4;
+  google.protobuf.Timestamp created_at_utc = 5;
+}

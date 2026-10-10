@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package senswave.users.v1;
+
+option csharp_namespace = "Senswave.Contracts.Users.V1";
+
+// gRPC equivalent of the ASP.NET Identity API (MapIdentityApi<User>) /manage routes. Authenticated.
+service AccountService {
+  rpc GetInfo(GetInfoRequest) returns (GetInfoResponse);
+  rpc UpdateInfo(UpdateInfoRequest) returns (UpdateInfoResponse);
+  rpc TwoFactor(TwoFactorRequest) returns (TwoFactorResponse);
+}
+
+message GetInfoRequest {}
+
+message GetInfoResponse {
+  string email = 1;
+  bool is_email_confirmed = 2;
+}
+
+message UpdateInfoRequest {
+  optional string new_email = 1;
+  optional string new_password = 2;
+  optional string old_password = 3;
+}
+
+message UpdateInfoResponse {
+  string email = 1;
+  bool is_email_confirmed = 2;
+}
+
+message TwoFactorRequest {
+  optional bool enable = 1;
+  optional string two_factor_code = 2;
+  bool reset_shared_key = 3;
+  bool reset_recovery_codes = 4;
+  bool forget_machine = 5;
+}
+
+message TwoFactorResponse {
+  string shared_key = 1;
+  int32 recovery_codes_left = 2;
+  repeated string recovery_codes = 3;
+  bool is_two_factor_enabled = 4;
+  bool is_machine_remembered = 5;
+}

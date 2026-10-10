@@ -45,6 +45,7 @@
     <ProjectReference Include="..\..\..\src\Modules\Users\Senswave.Users.Api\Senswave.Users.Api.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Users\Senswave.Users.Domain\Senswave.Users.Domain.csproj" />
     <ProjectReference Include="..\..\..\src\Presentation\Senswave.Presentation.Api\Senswave.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Shared\Senswave.Infrastructure.Grpc\Senswave.Infrastructure.Grpc.csproj" />
     <ProjectReference Include="..\..\..\src\Shared\Senswave.Integration\Senswave.Integration.csproj" />
   </ItemGroup>
 
