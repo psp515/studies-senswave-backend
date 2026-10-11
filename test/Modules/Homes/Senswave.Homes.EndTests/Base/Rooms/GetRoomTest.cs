@@ -8,6 +8,7 @@ namespace Senswave.Homes.EndTests.Base.Rooms;
 [Trait("Collection", "EndTest")]
 public class GetRoomTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndPoint()
     {
@@ -42,6 +43,7 @@ public class GetRoomTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(room.ToString(), dto["id"]!.ToString());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderCannotGetRoom()
     {

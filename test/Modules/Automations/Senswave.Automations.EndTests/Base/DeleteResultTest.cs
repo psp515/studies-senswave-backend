@@ -10,6 +10,7 @@ namespace Senswave.Automations.EndTests.Base;
 public class DeleteResultTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -45,6 +46,7 @@ public class DeleteResultTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(HomePriviliges))]
     public async Task FriendCanNotDeleteResultFromAutomation(string privilege)
@@ -71,6 +73,7 @@ public class DeleteResultTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.True(automationResultExists);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotDeleteLastResultFromAutomation()
     {
@@ -86,6 +89,7 @@ public class DeleteResultTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotDeleteNotExistingResultFromAutomation()
     {

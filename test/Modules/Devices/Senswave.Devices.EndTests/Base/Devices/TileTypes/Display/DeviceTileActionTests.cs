@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Devices.TileTypes.Display;
 [Trait("Collection", "EndTest")]
 public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -27,6 +28,7 @@ public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ActionNotSupportedForDisplayTile()
     {
@@ -50,6 +52,7 @@ public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IfNotOwnerCanNotInvokeAction()
     {

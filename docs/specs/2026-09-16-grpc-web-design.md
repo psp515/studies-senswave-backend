@@ -150,6 +150,23 @@ The `Subscribe` tests assert `Initialized` arrives, then one published update ar
 3. The full suite, since middleware changes affect every host: `dotnet test`
 4. Manual browser or CLI check against a running `GrpcWeb`-mode instance.
 
+## Implementation notes (2026-10-11)
+
+- **No `AddGrpcWeb`.** `Grpc.AspNetCore.Web` 2.83.0 has no service registration; `UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true })` in `GrpcWeb` mode is the whole server change.
+- **CORS** exposes the four `grpc-*` headers and also `senswave-errors-bin` and `senswave-trace-id` (Spec 0's error trailers), so browser clients can read Senswave error details too.
+- **Buffering:** `DiagnosticsMiddleware` only sets a header in `OnStarting`; `HealthCheckMiddleware` short-circuits the health path only. Neither buffers response bodies.
+- **Tests:** `GrpcWebFeatureTest` reuses `GrpcFeatureTestBase` through a `WrapTransport` hook (each channel goes through `GrpcWebHandler`; `WebMode` selects binary or text). `GrpcWebTestEnvironment` derives from `GrpcTestEnvironment` with its own database. Collection trait: `EndTestGrpcWeb`. `dev-tests.yaml` now also runs `EndTestGrpc`, `MqttEndTestGrpc` and `EndTestGrpcWeb`; before this, CI ran no gRPC tests.
+- **Manual verification** (host run from `bin/` with `Transport__Mode=GrpcWeb`, `LegalService.GetPrivacyPolicy` called from a .NET client and curl):
+
+  | Call | Plain HTTP endpoint | HTTPS endpoint |
+  |---|---|---|
+  | gRPC-Web binary (HTTP/1.1) | OK, `200 application/grpc-web` | OK |
+  | gRPC-Web text (HTTP/1.1) | OK | not run |
+  | Native gRPC (HTTP/2) | **Fails**, `HTTP_1_1_REQUIRED` | OK (ALPN h2) |
+  | CORS preflight and exposed headers | OK | not run |
+
+  Kestrel logs "HTTP/2 is not enabled ... TLS is not enabled" for plain-HTTP endpoints: `Http1AndHttp2` without TLS serves HTTP/1.1 only. **Open decision:** `docker/.env.template` binds plain HTTP only (`http://+:8080`), so in the container gRPC-Web works but native gRPC does not, which does not meet the "HTTP/1.1 and HTTP/2 in the container" criterion. Options: serve HTTPS in the container (a pfx volume is already mounted at `/https/`), or add a separate HTTP/2-only (h2c) endpoint for native gRPC.
+
 ## Known gaps
 
 - **Kestrel configuration is not covered by automated tests.** Manual verification required.

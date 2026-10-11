@@ -7,6 +7,7 @@ namespace Senswave.DataSources.EndTests.Base.Clients;
 [Trait("Collection", "EndTest")]
 public class GetClientStatusTests(BaseTestEnvironment apiFactory) : BaseFeatureTest(apiFactory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -21,6 +22,7 @@ public class GetClientStatusTests(BaseTestEnvironment apiFactory) : BaseFeatureT
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldReturnNotFoundForRandom()
     {

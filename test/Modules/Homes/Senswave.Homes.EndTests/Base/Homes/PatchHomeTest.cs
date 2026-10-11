@@ -10,6 +10,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class PatchHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -95,6 +96,7 @@ public class PatchHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(latitude, homeWithLocation.Location!.Latitude);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotUpdateNotHisHome()
     {
@@ -115,6 +117,7 @@ public class PatchHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorking()
     {
@@ -136,6 +139,7 @@ public class PatchHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.BadRequest, response2.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendWithGetPrivilegeCanNotPatchHome()
     {

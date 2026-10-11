@@ -6,6 +6,7 @@ namespace Senswave.Homes.EndTests.Base.Rooms;
 [Trait("Collection", "EndTest")]
 public class DeleteRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndPoint()
     {
@@ -59,6 +60,7 @@ public class DeleteRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(fact
         Assert.Equal(HttpStatusCode.NotFound, roomsResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendWithDisplayRoleCanNotDeleteRoom()
     {

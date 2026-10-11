@@ -7,6 +7,7 @@ namespace Senswave.Homes.EndTests.Base.Rooms;
 [Trait("Collection", "EndTest")]
 public class PatchRoomTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -24,6 +25,7 @@ public class PatchRoomTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IsValidationWorking()
     {
@@ -60,6 +62,7 @@ public class PatchRoomTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotPatchToNotHisRoom()
     {
@@ -96,6 +99,7 @@ public class PatchRoomTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserWithGetPrivilegeCanNotPatchRoom()
     {

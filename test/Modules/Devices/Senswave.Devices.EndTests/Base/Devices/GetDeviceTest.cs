@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Devices;
 [Trait("Collection", "EndTest")]
 public class GetDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -46,6 +47,7 @@ public class GetDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(deviceId, deviceResponse.Id);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotGetNotHisDevice()
     {

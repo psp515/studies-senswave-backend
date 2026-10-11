@@ -5,6 +5,7 @@ namespace Senswave.Devices.EndTests.Base.Devices;
 [Trait("Collection", "EndTest")]
 public class DeleteDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -36,6 +37,7 @@ public class DeleteDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotDeleteDeviceWithOperationDependency()
     {
@@ -53,6 +55,7 @@ public class DeleteDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotDeleteDeviceWithDashboardDependency()
     {
@@ -70,6 +73,7 @@ public class DeleteDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousUserCanNotDeleteDevice()
     {

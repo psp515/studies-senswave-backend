@@ -12,6 +12,7 @@ namespace Senswave.Devices.EndTests.Base.Devices;
 [Trait("Collection", "EndTest")]
 public class CreateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -85,6 +86,7 @@ public class CreateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(user.Id, device.HomeReference.OwnerId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotCreateDeviceWithDuplicateName()
     {
@@ -104,6 +106,7 @@ public class CreateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.Conflict, refuseToAdd.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousCannotCreateDevice()
     {
@@ -141,6 +144,7 @@ public class CreateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendCanNotCreateDevice()
     {

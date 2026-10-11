@@ -10,6 +10,7 @@ namespace Senswave.DataSources.EndTests.Mqtt.Brokers;
 [Trait("Collection", "MqttEndTest")]
 public class DeleteBroker(MqttTestEnvironment factory) : MqttFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotRemoveBrokerWhenWorking()
     {

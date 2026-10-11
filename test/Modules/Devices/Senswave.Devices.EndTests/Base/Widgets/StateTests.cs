@@ -8,6 +8,7 @@ namespace Senswave.Devices.EndTests.Base.Widgets;
 [Trait("Collection", "EndTest")]
 public class StateTests(BaseTestEnvironment environment) : BaseFeatureTest(environment)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -78,6 +79,7 @@ public class StateTests(BaseTestEnvironment environment) : BaseFeatureTest(envir
         Assert.Equal(HttpStatusCode.NoContent, result.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotDeleteWidget(string privilege)

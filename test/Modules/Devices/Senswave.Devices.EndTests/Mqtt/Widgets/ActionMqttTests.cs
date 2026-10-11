@@ -64,6 +64,7 @@ public class ActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest(fact
         await RemoveSharings(home);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendCanNotInvokeAction()
     {

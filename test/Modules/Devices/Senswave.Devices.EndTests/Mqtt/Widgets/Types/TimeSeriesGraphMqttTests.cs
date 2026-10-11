@@ -10,6 +10,7 @@ namespace Senswave.Devices.EndTests.Mqtt.Widgets.Types;
 [Trait("Collection", "MqttEndTest")]
 public class TimeSeriesGraphMqttTests(MqttTestEnvironment factory) : MqttFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ActionIsNotSupported()
     {

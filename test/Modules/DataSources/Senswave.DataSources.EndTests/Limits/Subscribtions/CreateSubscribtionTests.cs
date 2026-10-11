@@ -6,6 +6,7 @@ namespace Senswave.DataSources.EndTests.Limits.Subscribtions;
 [Trait("Collection", "LimitsEndTests")]
 public class CreateSubscribtionTests(LimitTestEnvironment factory) : LimitFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LimitationWorksPerDataSource()
     {

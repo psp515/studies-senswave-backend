@@ -8,6 +8,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class GetHomesTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndPoint()
     {
@@ -42,6 +43,7 @@ public class GetHomesTest(BaseTestEnvironment factory) : BaseFeatureTest(factory
         Assert.True(dto.Homes.Length > 0);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailedToGetNextPage()
     {

@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Dashbaords;
 [Trait("Collection", "EndTest")]
 public class DisplayDashboardTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -48,6 +49,7 @@ public class DisplayDashboardTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(widget, data["configuration"]!["positionedWidgets"]!.AsArray()[0]!.AsObject()["widgetId"]!.GetValue<Guid>());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCanNotDisplayDashboard()
     {

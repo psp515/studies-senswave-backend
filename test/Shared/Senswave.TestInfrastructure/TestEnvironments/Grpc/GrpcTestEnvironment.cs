@@ -27,12 +27,17 @@ public class GrpcTestEnvironment : WebApplicationFactory<Program>, IAsyncLifetim
     protected virtual TransportMode Mode => TransportMode.Grpc;
 
 #if TESTS
-    internal static readonly IDatabase Database = new PostgreSqlFixture("SenswaveEndTestsGrpc");
-    internal static readonly IMessageBus MessageBus = new RabbitMqFixture();
+    private static readonly IDatabase GrpcDatabase = new PostgreSqlFixture("SenswaveEndTestsGrpc");
+    private static readonly IMessageBus GrpcMessageBus = new RabbitMqFixture();
 #else
-    internal static readonly IDatabase Database = new PostgreSqlContainerFixture("SenswaveEndTestsGrpc");
-    internal static readonly IMessageBus MessageBus = new RabbitMqContainerFixture();
+    private static readonly IDatabase GrpcDatabase = new PostgreSqlContainerFixture("SenswaveEndTestsGrpc");
+    private static readonly IMessageBus GrpcMessageBus = new RabbitMqContainerFixture();
 #endif
+
+    /// <summary>Each derived mode overrides these with its own fixtures, so modes never share a database.</summary>
+    protected virtual IDatabase Database => GrpcDatabase;
+
+    protected virtual IMessageBus MessageBus => GrpcMessageBus;
 
     #region ServicesMocks
 

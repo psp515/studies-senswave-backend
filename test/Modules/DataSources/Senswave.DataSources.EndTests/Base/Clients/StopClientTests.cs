@@ -5,6 +5,7 @@ namespace Senswave.DataSources.EndTests.Base.Clients;
 [Trait("Collection", "EndTest")]
 public class StopClientTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -19,6 +20,7 @@ public class StopClientTests(BaseTestEnvironment factory) : BaseFeatureTest(fact
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsToStopNotWorkingClient()
     {

@@ -34,17 +34,19 @@ public abstract class GrpcFeatureTestBase(WebApplicationFactory<Program> factory
 
     #region Channels
 
-    protected GrpcChannel CreateChannel() =>
-        GrpcChannel.ForAddress(Factory.Server.BaseAddress, new GrpcChannelOptions
-        {
-            HttpHandler = Factory.Server.CreateHandler()
-        });
+    protected GrpcChannel CreateChannel() => CreateChannel(Factory.Server.CreateHandler());
 
     protected GrpcChannel CreateChannel(string accessToken) =>
+        CreateChannel(new BearerTokenHandler(accessToken, Factory.Server.CreateHandler()));
+
+    private GrpcChannel CreateChannel(HttpMessageHandler handler) =>
         GrpcChannel.ForAddress(Factory.Server.BaseAddress, new GrpcChannelOptions
         {
-            HttpHandler = new BearerTokenHandler(accessToken, Factory.Server.CreateHandler())
+            HttpHandler = WrapTransport(handler)
         });
+
+    /// <summary>Hook for the wire format: native gRPC sends as-is, gRPC-Web wraps the handler.</summary>
+    protected virtual HttpMessageHandler WrapTransport(HttpMessageHandler handler) => handler;
 
     protected static T CreateClient<T>(ChannelBase channel) where T : ClientBase<T> =>
         (T)Activator.CreateInstance(typeof(T), channel)!;

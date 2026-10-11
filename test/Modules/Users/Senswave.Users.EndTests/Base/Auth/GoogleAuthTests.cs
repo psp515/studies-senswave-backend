@@ -165,6 +165,7 @@ public class GoogleAuthTests(BaseTestEnvironment factory) : BaseFeatureTest(fact
         Assert.NotNull(userFoundByExternalId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [InlineData("SomePassword123!")]
     [InlineData("")]
@@ -211,6 +212,7 @@ public class GoogleAuthTests(BaseTestEnvironment factory) : BaseFeatureTest(fact
         Assert.NotNull(userFoundByExternalId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsWhenInvalid()
     {

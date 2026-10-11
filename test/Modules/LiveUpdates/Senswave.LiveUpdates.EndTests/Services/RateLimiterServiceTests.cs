@@ -8,6 +8,7 @@ namespace Senswave.LiveUpdates.EndTests.Services;
 [Trait("Collection", "EndTest")]
 public class RateLimiterServiceTests(BaseTestEnvironment factory) : BaseSignalRFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task RateLimiterExceeded()
     {

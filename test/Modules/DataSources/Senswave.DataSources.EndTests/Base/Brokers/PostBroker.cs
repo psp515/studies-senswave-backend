@@ -23,6 +23,7 @@ public class PostBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.True(service.IsFailure);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -39,6 +40,7 @@ public class PostBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IsValidationEnabled()
     {
@@ -59,6 +61,7 @@ public class PostBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IsValidationEnabledProtocolVersion()
     {
@@ -79,6 +82,7 @@ public class PostBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NameAlreadyUsed()
     {
@@ -101,6 +105,7 @@ public class PostBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UrlAndPortAlreadyUsed()
     {
@@ -145,6 +150,7 @@ public class PostBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotCreateDuplicateBroker()
     {

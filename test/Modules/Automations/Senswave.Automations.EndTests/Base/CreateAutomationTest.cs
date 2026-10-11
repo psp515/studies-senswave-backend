@@ -11,6 +11,7 @@ namespace Senswave.Automations.EndTests.Base;
 [Trait("Collection", "EndTest")]
 public class CreateAutomationTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -48,6 +49,7 @@ public class CreateAutomationTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.NotNull(automation);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotHaveTwoAutomationsWithTheSameNameAmongOneHome()
     {
@@ -75,6 +77,7 @@ public class CreateAutomationTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.NotNull(automation);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotExistsAutomationWithBadConditionConfiguration()
     {
@@ -118,6 +121,7 @@ public class CreateAutomationTest(BaseTestEnvironment factory) : BaseFeatureTest
     }
 
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [InlineData(_displayPrivilege, _displayPrivilege)]
     [InlineData(_displayPrivilege, _actionPrivilege)]

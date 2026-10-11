@@ -6,6 +6,7 @@ namespace Senswave.DataSources.EndTests.Base.Subscribtions;
 [Trait("Collection", "EndTest")]
 public class GetSubscribtionsTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -39,6 +40,7 @@ public class GetSubscribtionsTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Single(subscribtions.Items);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCannotFetchSubscribtions()
     {
@@ -98,6 +100,7 @@ public class GetSubscribtionsTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(3, subscribtions.Items.Count());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PaginationFailsToGetEmptyPage()
     {
@@ -114,6 +117,7 @@ public class GetSubscribtionsTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationFailsForInvalidPage()
     {
@@ -129,6 +133,7 @@ public class GetSubscribtionsTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ReturnsNotFoundForNonExistentBroker()
     {

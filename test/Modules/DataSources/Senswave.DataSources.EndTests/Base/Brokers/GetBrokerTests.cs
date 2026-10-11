@@ -5,6 +5,7 @@ namespace Senswave.DataSources.EndTests.Base.Brokers;
 [Trait("Collection", "EndTest")]
 public class GetBrokerTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -34,6 +35,7 @@ public class GetBrokerTests(BaseTestEnvironment factory) : BaseFeatureTest(facto
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotGetNotHisBroker()
     {

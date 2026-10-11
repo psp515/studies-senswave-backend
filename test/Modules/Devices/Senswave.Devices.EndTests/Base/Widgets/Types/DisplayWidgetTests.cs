@@ -25,6 +25,7 @@ public class DisplayWidgetTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidDisplay()
     {

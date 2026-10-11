@@ -7,6 +7,7 @@ namespace Senswave.Devices.EndTests.Base.Devices.TileTypes.Switch;
 [Trait("Collection", "EndTest")]
 public class UpdateDeviceTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidatesDeviceTile()
     {
@@ -125,6 +126,7 @@ public class UpdateDeviceTests(BaseTestEnvironment factory) : BaseFeatureTest(fa
         Assert.Null(device.Tile.OperationId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NonBooleanOperationRejectedForSwitchTile()
     {

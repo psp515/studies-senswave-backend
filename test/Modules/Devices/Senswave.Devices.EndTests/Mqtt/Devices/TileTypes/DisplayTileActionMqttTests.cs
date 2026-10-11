@@ -9,6 +9,7 @@ namespace Senswave.Devices.EndTests.Mqtt.Devices.TileTypes;
 [Trait("Collection", "MqttEndTest")]
 public class DisplayTileActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ActionNotSupportedForDisplayTile()
     {
@@ -39,6 +40,7 @@ public class DisplayTileActionMqttTests(MqttTestEnvironment factory) : MqttFeatu
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendCannotActWithDeviceDisplayPrivilege()
     {

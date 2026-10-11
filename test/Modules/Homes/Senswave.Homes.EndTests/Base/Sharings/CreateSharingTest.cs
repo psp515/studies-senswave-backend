@@ -13,6 +13,7 @@ namespace Senswave.Homes.EndTests.Base.Sharings;
 [Trait("Collection", "EndTest")]
 public class CreateSharingTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -190,6 +191,7 @@ public class CreateSharingTest(BaseTestEnvironment factory) : BaseFeatureTest(fa
         Assert.NotEmpty(jsonResponse.Password);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorks()
     {
@@ -214,6 +216,7 @@ public class CreateSharingTest(BaseTestEnvironment factory) : BaseFeatureTest(fa
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderCannotCreateInvitation()
     {
@@ -237,6 +240,7 @@ public class CreateSharingTest(BaseTestEnvironment factory) : BaseFeatureTest(fa
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(HomePriviliges))]
     public async Task FriendCannotCreateInvitation(string privilege)

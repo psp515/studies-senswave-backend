@@ -151,6 +151,7 @@ public class ButtonWidgetTests(BaseTestEnvironment factory) : BaseFeatureTest(fa
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesButtonAction()
     {

@@ -8,6 +8,7 @@ public class DisplayDevicesTests(BaseTestEnvironment factory) : BaseFeatureTest(
 {
     public static List<object[]> CanDisplayPriviliges => HomePriviliges;
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -46,6 +47,7 @@ public class DisplayDevicesTests(BaseTestEnvironment factory) : BaseFeatureTest(
         });
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task GetDevicesReturnNotFoundIfNoDevicesInHome()
     {
@@ -101,6 +103,7 @@ public class DisplayDevicesTests(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(4, devices.Count);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderHasNoAccess()
     {

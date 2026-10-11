@@ -142,6 +142,7 @@ public class SwitchTileActionMqttTests(MqttTestEnvironment factory) : MqttFeatur
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendCannotActWithDeviceDisplayPrivilege()
     {

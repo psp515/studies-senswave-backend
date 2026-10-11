@@ -5,6 +5,7 @@ namespace Senswave.Users.EndTests.Base.Users;
 [Trait("Collection", "EndTest")]
 public class PatchUserTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -81,6 +82,7 @@ public class PatchUserTests(BaseTestEnvironment factory) : BaseFeatureTest(facto
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsWhenOneArgumentIsInvalid()
     {
@@ -101,6 +103,7 @@ public class PatchUserTests(BaseTestEnvironment factory) : BaseFeatureTest(facto
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationIsWorking()
     {

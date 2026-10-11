@@ -7,6 +7,7 @@ namespace Senswave.Homes.EndTests.Base.Rooms;
 [Trait("Collection", "EndTest")]
 public class PostRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -23,6 +24,7 @@ public class PostRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IsValidationWorking()
     {
@@ -55,6 +57,7 @@ public class PostRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task HomeNameAlreadyUsed()
     {
@@ -73,6 +76,7 @@ public class PostRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.Conflict, response2.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidHomeForUser()
     {
@@ -107,6 +111,7 @@ public class PostRoomTests(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserWithGetPrivilegeCanNotPostRoom()
     {

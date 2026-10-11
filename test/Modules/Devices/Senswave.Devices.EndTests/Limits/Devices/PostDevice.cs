@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Limits.Devices;
 [Trait("Collection", "LimitsEndTests")]
 public class PostDevice(LimitTestEnvironment factory) : LimitFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LimitationWorks()
     {

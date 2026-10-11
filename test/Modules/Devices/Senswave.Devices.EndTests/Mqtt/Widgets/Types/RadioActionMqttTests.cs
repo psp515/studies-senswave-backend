@@ -48,6 +48,7 @@ public class RadioActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidOperationOption()
     {
@@ -76,6 +77,7 @@ public class RadioActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesRadioAction()
     {

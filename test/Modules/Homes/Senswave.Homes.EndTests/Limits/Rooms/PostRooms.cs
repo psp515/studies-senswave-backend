@@ -7,6 +7,7 @@ namespace Senswave.Homes.EndTests.Limits.Rooms;
 [Trait("Collection", "LimitsEndTests")]
 public class PostRooms(LimitTestEnvironment factory) : LimitFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LimitationWorks()
     {

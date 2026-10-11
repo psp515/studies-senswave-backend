@@ -32,6 +32,7 @@ public class StopClientTests(MqttTestEnvironment factory) : MqttFeatureTest(fact
         await StopBrokerClientInternal(brokerId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCannotStopClient()
     {

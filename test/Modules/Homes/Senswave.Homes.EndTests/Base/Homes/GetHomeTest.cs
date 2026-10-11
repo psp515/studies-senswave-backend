@@ -9,6 +9,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class GetHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -76,6 +77,7 @@ public class GetHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Null(parsingResult["dataSource"]);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotGetAnotherUserHome()
     {

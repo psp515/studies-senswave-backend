@@ -41,6 +41,7 @@ public class StartClientTests(MqttTestEnvironment factory) : MqttFeatureTest(fac
         await StopBrokerClientInternal(brokerId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ClientFailsToStartAndIsNotAddedToList()
     {

@@ -12,6 +12,7 @@ namespace Senswave.Devices.EndTests.Base.Devices;
 [Trait("Collection", "EndTest")]
 public class UpdateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -32,6 +33,7 @@ public class UpdateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorking()
     {
@@ -56,6 +58,7 @@ public class UpdateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousDoesNotSeeDevice()
     {
@@ -99,6 +102,7 @@ public class UpdateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task RoomShouldBeInHome()
     {
@@ -204,6 +208,7 @@ public class UpdateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [InlineData(_displayPrivilege)]
     [InlineData(_actionPrivilege)]
@@ -251,6 +256,7 @@ public class UpdateDeviceTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserWithNonProperHomePrivilegeCanNotPatchDevice()
     {

@@ -10,6 +10,7 @@ public class LiveUpdatesHubTests(BaseTestEnvironment factory) : BaseFeatureTest(
 {
     public static List<object[]> ValidHomeSharingTypes => HomePriviliges;
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -72,6 +73,7 @@ public class LiveUpdatesHubTests(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.True(initialized);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderCanNotInitializeByHomeReferenceId()
     {

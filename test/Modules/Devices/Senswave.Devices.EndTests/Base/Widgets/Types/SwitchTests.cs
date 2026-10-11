@@ -25,6 +25,7 @@ public class SwitchTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidIntegerOperation()
     {
@@ -43,6 +44,7 @@ public class SwitchTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidNumberOperation()
     {
@@ -61,6 +63,7 @@ public class SwitchTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidTextOperation()
     {
@@ -78,6 +81,7 @@ public class SwitchTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesSwitchAction()
     {

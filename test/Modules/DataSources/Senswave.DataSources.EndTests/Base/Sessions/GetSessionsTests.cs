@@ -25,6 +25,7 @@ public class GetSessionsTests(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Single(sessions.Items);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PaginationFailsToGetEmptyPage()
     {
@@ -41,6 +42,7 @@ public class GetSessionsTests(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidatonWorks()
     {
@@ -84,6 +86,7 @@ public class GetSessionsTests(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.True(sessions.Items.First().CreatedAtUtc > sessions.Items.Last().CreatedAtUtc);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCannotFetchSessions()
     {
@@ -99,6 +102,7 @@ public class GetSessionsTests(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

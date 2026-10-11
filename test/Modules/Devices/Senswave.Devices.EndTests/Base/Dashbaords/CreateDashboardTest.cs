@@ -7,6 +7,7 @@ namespace Senswave.Devices.EndTests.Base.Dashbaords;
 [Trait("Collection", "EndTest")]
 public class CreateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -40,6 +41,7 @@ public class CreateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotCreateDashboardWithDuplicateName()
     {
@@ -62,6 +64,7 @@ public class CreateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationIsWorking()
     {
@@ -88,6 +91,7 @@ public class CreateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Conflict, wrongResponse3.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCanNotCreateDevice()
     {
@@ -127,6 +131,7 @@ public class CreateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotCreateDashboard(string privilege)

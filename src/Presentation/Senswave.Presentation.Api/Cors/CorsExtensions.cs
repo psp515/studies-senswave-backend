@@ -1,4 +1,6 @@
-﻿namespace Senswave.Api.Cors;
+﻿using Senswave.Infrastructure.Grpc.Errors;
+
+namespace Senswave.Api.Cors;
 
 public static class CorsExtensions
 {
@@ -26,7 +28,16 @@ public static class CorsExtensions
 
                 builder.WithOrigins(corsOptions!.AllowedOrigins)
                        .AllowAnyHeader()
-                       .AllowAnyMethod();
+                       .AllowAnyMethod()
+                       // Browsers hide response headers and trailers from scripts unless exposed; gRPC-Web clients
+                       // need the gRPC status and the Senswave error/trace trailers. Harmless for REST.
+                       .WithExposedHeaders(
+                           "grpc-status",
+                           "grpc-message",
+                           "grpc-encoding",
+                           "grpc-accept-encoding",
+                           GrpcErrorMetadata.ErrorsKey,
+                           GrpcErrorMetadata.TraceIdKey);
             });
         });
 

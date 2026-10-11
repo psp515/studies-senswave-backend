@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Sharings;
 [Trait("Collection", "EndTest")]
 public class PutDeviceSharingsTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -53,6 +54,7 @@ public class PutDeviceSharingsTests(BaseTestEnvironment factory) : BaseFeatureTe
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task HomeMustBeShared()
     {
@@ -77,6 +79,7 @@ public class PutDeviceSharingsTests(BaseTestEnvironment factory) : BaseFeatureTe
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderCannotCreateDeviceSharing()
     {
@@ -101,6 +104,7 @@ public class PutDeviceSharingsTests(BaseTestEnvironment factory) : BaseFeatureTe
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(DevicePrivileges))]
     public async Task FriendCannotCreateDeviceSharing(string privilage)

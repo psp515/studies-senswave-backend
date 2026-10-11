@@ -114,6 +114,20 @@ The runbook also records:
 
 Architecture tests are unaffected.
 
+## Implementation notes (2026-10-11)
+
+- **Rate limiting switch verified on a running host** (Postgres and RabbitMQ in containers, `Transport__Mode=Rest`): with `RateLimiter__Enabled=false` the host starts, and 30 anonymous `POST /api/v1/auth/login` calls in a row all return 401, none 429. With the default (`true`), the same burst returns 429 from the 11th call (anonymous `TokenLimit` 10).
+- **Tagging:** 290 REST EndTests carry `Category=FailurePath`. The two ASP.NET Core rate-limiter classes carry `Category=RateLimiting` at class level. A script classified each test by its last HTTP status assertion, then about 60 edge cases were reviewed by hand:
+  - "delete, then GET returns 404" is a success (11 tests)
+  - "refuse, then GET shows it still exists" is a refusal
+  - the `PresenceGates*` tests (refused offline, allowed online, refused again) are refusals
+  - `ConfirmEmailV2`: the 302 to the failure page is a refusal, the 302 to the success page is not
+  - SignalR refusals are tagged: the hub's 401, an intruder's `Initialize`, and the LiveUpdates module rate limiter
+  - tests named against their assertion are classified by the assertion: `TileActionAllowedWithDefaultPresence` and `MaliciousUserCanGetAutomations` assert refusals; `FailsWhenValueProvided` asserts 204
+  - tests that assert a side effect did not happen (automation not triggered, event not published) have no refusal status and stay untagged
+- **No theory splits were needed.** Every status assertion in the REST suites compares against a literal code, and no theory branches on its data row, so no `[Theory]` mixes success and refusal rows.
+- **CLAUDE.md** documents the tagging rule under "Conventions to preserve".
+
 ## Known gaps
 
 - **Tagging is manual and can drift.** A new REST failure test without the trait silently enters comparison runs. Mitigate by documenting the rule in CLAUDE.md under conventions, so new tests follow it.

@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Operations;
 [Trait("Collection", "EndTest")]
 public class DisplayOperationsTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -40,6 +41,7 @@ public class DisplayOperationsTest(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(2, data!["items"]!.AsArray().Count());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailedToGetSecondPage()
     {

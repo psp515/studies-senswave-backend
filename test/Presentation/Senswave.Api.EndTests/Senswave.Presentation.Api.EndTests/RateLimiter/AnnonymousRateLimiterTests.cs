@@ -8,6 +8,7 @@ namespace Senswave.Presentation.Api.EndTests.RateLimiter;
 
 [Collection("Limits E2E Tests Collection")]
 [Trait("Collection", "LimitsEndTests")]
+[Trait("Category", "RateLimiting")]
 public class AnnonymousRateLimiterTests(LimitTestEnvironment factory) : LimitFeatureTest(factory)
 {
     [Fact]

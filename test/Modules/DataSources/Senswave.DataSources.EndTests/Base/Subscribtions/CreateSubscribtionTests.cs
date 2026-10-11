@@ -7,6 +7,7 @@ namespace Senswave.DataSources.EndTests.Base.Subscribtions;
 [Trait("Collection", "EndTest")]
 public class CreateSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -42,6 +43,7 @@ public class CreateSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.NotEqual(Guid.Empty, created!.Id);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCannotCreateSubscribtion()
     {
@@ -58,6 +60,7 @@ public class CreateSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task TopicAlreadyExistsFails()
     {
@@ -76,6 +79,7 @@ public class CreateSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationFailsForInvalidTopic()
     {
@@ -92,6 +96,7 @@ public class CreateSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ReturnsNotFoundForNonExistentBroker()
     {

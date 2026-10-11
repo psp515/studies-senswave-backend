@@ -25,6 +25,7 @@ public class RadioTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidOption()
     {
@@ -57,6 +58,7 @@ public class RadioTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LackOfOptions()
     {
@@ -76,6 +78,7 @@ public class RadioTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesRadioAction()
     {

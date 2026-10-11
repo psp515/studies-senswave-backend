@@ -25,6 +25,7 @@ public class SliderTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidStep()
     {
@@ -44,6 +45,7 @@ public class SliderTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidIntegerOperation()
     {
@@ -62,6 +64,7 @@ public class SliderTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidNumberOperation()
     {
@@ -81,6 +84,7 @@ public class SliderTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
     }
 
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesSliderAction()
     {
