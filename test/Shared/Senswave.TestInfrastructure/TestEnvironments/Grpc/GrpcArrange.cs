@@ -1,6 +1,9 @@
-﻿using Grpc.Core;
+﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using Senswave.Contracts.DataSources.V1;
+using Senswave.Contracts.Devices.V1;
 using Senswave.Contracts.Homes.V1;
+using Senswave.TestInfrastructure.Fixtures.Mqtt;
 
 namespace Senswave.TestInfrastructure.TestEnvironments.Grpc;
 
@@ -60,6 +63,74 @@ public static class GrpcArrange
         {
             HomeId = homeId,
             Name = $"Room {Guid.NewGuid().ToString()[..8]}",
+        });
+
+        return response.Id;
+    }
+
+    public static async Task<string> CreateMqttBrokerAsync(this ChannelBase channel, IMqttFixture mqtt)
+    {
+        var client = new DataSourcesService.DataSourcesServiceClient(channel);
+
+        var response = await client.CreateBrokerAsync(new CreateBrokerRequest
+        {
+            Name = "Mqtt Broker",
+            Url = mqtt.Hostname,
+            ClientName = Guid.NewGuid().ToString(),
+            Port = mqtt.Port,
+            ProtocolVersion = mqtt.Version,
+            UseTls = mqtt.UseTls,
+            Username = mqtt.Username,
+            Password = mqtt.Password,
+        });
+
+        return response.Id;
+    }
+
+    public static async Task StartClientAsync(this ChannelBase channel, string brokerId, IMqttFixture mqtt) =>
+        await new DataSourcesService.DataSourcesServiceClient(channel)
+            .StartClientAsync(new StartClientRequest { BrokerId = brokerId, Username = mqtt.Username, Password = mqtt.Password });
+
+    public static async Task<string> CreateDeviceAsync(this ChannelBase channel, string homeId)
+    {
+        var client = new DevicesService.DevicesServiceClient(channel);
+
+        var response = await client.CreateDeviceAsync(new CreateDeviceRequest
+        {
+            HomeId = homeId,
+            Name = $"Device {Guid.NewGuid().ToString()[..8]}",
+            Icon = "device",
+        });
+
+        return response.Id;
+    }
+
+    public static async Task<string> CreateBooleanOperationAsync(this ChannelBase channel, string deviceId)
+    {
+        var client = new OperationsService.OperationsServiceClient(channel);
+
+        var response = await client.CreateOperationAsync(new CreateOperationRequest
+        {
+            DeviceId = deviceId,
+            Name = Guid.NewGuid().ToString()[..29],
+            Type = "Boolean",
+            Topic = Guid.NewGuid().ToString().Replace("-", "/"),
+            Configuration = Struct.Parser.ParseJson("""{ "jsonNames": ["value"], "isJson": true, "saveOnUserAction": true }"""),
+        });
+
+        return response.Id;
+    }
+
+    public static async Task<string> CreateSwitchWidgetAsync(this ChannelBase channel, string operationId)
+    {
+        var client = new WidgetsService.WidgetsServiceClient(channel);
+
+        var response = await client.CreateWidgetAsync(new CreateWidgetRequest
+        {
+            OperationId = operationId,
+            Name = $"Widget {Guid.NewGuid()}",
+            Type = "Switch",
+            Configuration = new Struct(),
         });
 
         return response.Id;
