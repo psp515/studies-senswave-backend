@@ -11,6 +11,7 @@ namespace Senswave.Devices.EndTests.Mqtt.Widgets.Types;
 [Trait("Collection", "MqttEndTest")]
 public class SwitchActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task BooleanOperationsFails()
     {
@@ -76,6 +77,7 @@ public class SwitchActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTes
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesSwitchAction()
     {

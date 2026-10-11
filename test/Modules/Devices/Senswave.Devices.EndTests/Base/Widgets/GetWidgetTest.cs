@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Widgets;
 [Trait("Collection", "EndTest")]
 public class GetWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -38,6 +39,7 @@ public class GetWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(factor
         Assert.Equal(JsonValueKind.True, json!["configuration"]!["value"]!.GetValueKind());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCanNotGetWidget()
     {

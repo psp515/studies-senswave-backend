@@ -7,6 +7,7 @@ namespace Senswave.Devices.EndTests.Base.Sharings;
 public class DeviceSharingsTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

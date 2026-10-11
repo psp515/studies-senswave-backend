@@ -5,6 +5,7 @@ namespace Senswave.Users.EndTests.Base.Users;
 [Trait("Collection", "EndTest")]
 public class GetUserTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

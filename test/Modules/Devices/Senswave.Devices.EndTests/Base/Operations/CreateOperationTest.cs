@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Operations;
 [Trait("Collection", "EndTest")]
 public class CreateOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -22,6 +23,7 @@ public class CreateOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationIsWorking()
     {
@@ -40,6 +42,7 @@ public class CreateOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task TopicCanNotBeSharedBetweenDevices()
     {
@@ -63,6 +66,7 @@ public class CreateOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task TopicCanNotBeSharedBetweenDevicesExecutedConcurrently()
     {
@@ -113,6 +117,7 @@ public class CreateOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotCreateOperation(string privilege)

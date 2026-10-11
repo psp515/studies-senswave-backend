@@ -9,6 +9,7 @@ namespace Senswave.Automations.EndTests.Base;
 [Trait("Collection", "EndTest")]
 public class PutResultTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -41,6 +42,7 @@ public class PutResultTests(BaseTestEnvironment factory) : BaseFeatureTest(facto
         CheckResultPutted(entities.AutomationId, valueToSend);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotPutNotExistingOperation()
     {
@@ -57,6 +59,7 @@ public class PutResultTests(BaseTestEnvironment factory) : BaseFeatureTest(facto
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(HomePriviliges))]
     public async Task MaliciousUserCanNotPutResult(string privilege)

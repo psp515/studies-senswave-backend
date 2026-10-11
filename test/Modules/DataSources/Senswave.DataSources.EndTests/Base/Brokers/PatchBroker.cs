@@ -7,6 +7,7 @@ namespace Senswave.DataSources.EndTests.Base.Brokers;
 [Trait("Collection", "EndTest")]
 public class PatchBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -41,6 +42,7 @@ public class PatchBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidProtocolForBroker()
     {
@@ -59,6 +61,7 @@ public class PatchBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationIsWorking()
     {
@@ -78,6 +81,7 @@ public class PatchBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotUpdateNotHisBroker()
     {
@@ -96,6 +100,7 @@ public class PatchBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.NotFound, stealerResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UsersCannotPatchBrokersWithSameUrlAndPort()
     {

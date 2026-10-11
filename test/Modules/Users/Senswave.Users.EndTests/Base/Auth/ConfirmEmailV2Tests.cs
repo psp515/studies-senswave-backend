@@ -74,6 +74,7 @@ public class ConfirmEmailV2Tests(BaseTestEnvironment environment) : BaseFeatureT
         Assert.Equal(SuccessRedirect, confirmationResult.Headers.Location.ToString());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsToConfirmInvalidCodeForUser()
     {
@@ -142,6 +143,7 @@ public class ConfirmEmailV2Tests(BaseTestEnvironment environment) : BaseFeatureT
         Assert.Equal(FailureRedirect, confirmationResult.Headers.Location.ToString());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsToConfirmUnknownUser()
     {

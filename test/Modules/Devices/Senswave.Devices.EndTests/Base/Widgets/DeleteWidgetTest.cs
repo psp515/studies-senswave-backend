@@ -5,6 +5,7 @@ namespace Senswave.Devices.EndTests.Base.Widgets;
 [Trait("Collection", "EndTest")]
 public class DeleteWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -61,6 +62,7 @@ public class DeleteWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.OK, operationResult.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousCanNotDeleteWidget()
     {
@@ -107,6 +109,7 @@ public class DeleteWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.NotFound, getResults.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotDeleteWidget(string privilege)

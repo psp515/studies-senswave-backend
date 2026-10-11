@@ -7,6 +7,7 @@ namespace Senswave.Devices.EndTests.Base.Widgets;
 [Trait("Collection", "EndTest")]
 public class CreateWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -39,6 +40,7 @@ public class CreateWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotCreateWidgetWithDuplicateName()
     {
@@ -59,6 +61,7 @@ public class CreateWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCannotCreateWidget()
     {
@@ -77,6 +80,7 @@ public class CreateWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorks()
     {
@@ -123,6 +127,7 @@ public class CreateWidgetTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriednCanNotCreateWidget(string privilege)

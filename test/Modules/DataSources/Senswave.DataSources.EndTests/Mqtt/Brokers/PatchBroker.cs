@@ -10,6 +10,7 @@ namespace Senswave.DataSources.EndTests.Mqtt.Brokers;
 public class PatchBroker(MqttTestEnvironment factory) : MqttFeatureTest(factory)
 {
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PatchBrokerCannotBeInvokedIfWorking()
     {
@@ -60,6 +61,7 @@ public class PatchBroker(MqttTestEnvironment factory) : MqttFeatureTest(factory)
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserFailsToPatchBrokerIfTestNotPasses()
     {

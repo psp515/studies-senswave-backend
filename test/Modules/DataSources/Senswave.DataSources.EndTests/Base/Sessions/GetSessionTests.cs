@@ -28,6 +28,7 @@ public class GetSessionTests(BaseTestEnvironment factory) : BaseFeatureTest(fact
         Assert.Contains(sessions.Logs, x => x.EventType == SessionEventType.Connected.ToString());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCannotFetchSession()
     {
@@ -44,6 +45,7 @@ public class GetSessionTests(BaseTestEnvironment factory) : BaseFeatureTest(fact
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

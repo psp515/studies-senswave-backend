@@ -6,6 +6,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class DeleteHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -21,6 +22,7 @@ public class DeleteHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(facto
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotDeleteNotExistingHome()
     {
@@ -54,6 +56,7 @@ public class DeleteHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(facto
         Assert.Equal(HttpStatusCode.BadRequest, getResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotDeleteAnotherUserHome()
     {

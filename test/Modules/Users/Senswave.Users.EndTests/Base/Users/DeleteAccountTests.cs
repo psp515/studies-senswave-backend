@@ -21,6 +21,7 @@ public class DeleteAccountTests(BaseTestEnvironment factory) : BaseFeatureTest(f
     private Task EnableWorker() => UpdateSetting("Modules:Users:DeleteAccount:WorkerEnabled", true);
     private Task DisableWorker() => UpdateSetting("Modules:Users:DeleteAccount:WorkerEnabled", false);
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

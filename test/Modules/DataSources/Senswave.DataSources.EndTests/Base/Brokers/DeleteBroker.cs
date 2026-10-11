@@ -5,6 +5,7 @@ namespace Senswave.DataSources.EndTests.Base.Brokers;
 [Trait("Collection", "EndTest")]
 public class DeleteBroker(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

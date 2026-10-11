@@ -50,6 +50,7 @@ public class ColorActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesColorAction()
     {
@@ -95,6 +96,7 @@ public class ColorActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTest
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task EmptyIsInvalidColor()
     {

@@ -8,6 +8,7 @@ namespace Senswave.Automations.EndTests.Base;
 [Trait("Collection", "EndTest")]
 public class DeleteConditionTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -43,6 +44,7 @@ public class DeleteConditionTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CanNotDeleteNotExistingConditionFromAutomation()
     {
@@ -64,6 +66,7 @@ public class DeleteConditionTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NotFound, response2.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(HomePriviliges))]
     public async Task FriendCanNotDeleteConditionFromAutomation(string privilege)

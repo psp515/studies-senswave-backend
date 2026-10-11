@@ -8,6 +8,7 @@ namespace Senswave.Homes.EndTests.Base.Sharings;
 [Trait("Collection", "EndTest")]
 public class LeaveHomeSharingTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -21,6 +22,7 @@ public class LeaveHomeSharingTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task OwnerCanNotLeaveSharing()
     {
@@ -82,6 +84,7 @@ public class LeaveHomeSharingTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.Empty(jsonResponseAssert.Items);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderCannotLeaveHome()
     {

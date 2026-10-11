@@ -74,6 +74,7 @@ public class SliderActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTes
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesSliderAction()
     {

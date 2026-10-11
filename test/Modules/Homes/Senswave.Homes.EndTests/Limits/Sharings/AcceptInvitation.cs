@@ -7,6 +7,7 @@ namespace Senswave.Homes.EndTests.Limits.Sharings;
 [Trait("Collection", "LimitsEndTests")]
 public class AcceptInvitation(LimitTestEnvironment factory) : LimitFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LimitationWorks()
     {

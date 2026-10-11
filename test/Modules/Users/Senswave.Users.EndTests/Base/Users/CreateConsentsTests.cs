@@ -11,6 +11,7 @@ public class CreateConsentsTests(BaseTestEnvironment factory) : BaseFeatureTest(
 {
     private static string Path => $"{Paths.UsersPath}/consents";
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {

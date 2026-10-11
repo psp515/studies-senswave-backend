@@ -10,6 +10,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class DeleteHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -100,6 +101,7 @@ public class DeleteHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Null(home.DataSourceReference);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendCannotDeleteBrokerFromHome()
     {

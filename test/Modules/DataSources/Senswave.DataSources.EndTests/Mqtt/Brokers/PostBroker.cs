@@ -31,6 +31,7 @@ public class PostBroker(MqttTestEnvironment factory) : MqttFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidPasswordForBrokerIsNotCreatingBroker()
     {

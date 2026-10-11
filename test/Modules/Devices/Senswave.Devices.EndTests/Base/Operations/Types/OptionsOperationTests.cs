@@ -46,6 +46,7 @@ public class OptionsOperationTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidJsonOperation()
     {
@@ -86,6 +87,7 @@ public class OptionsOperationTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidOperation()
     {

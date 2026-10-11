@@ -6,6 +6,7 @@ namespace Senswave.DataSources.EndTests.Limits.Brokers;
 [Trait("Collection", "LimitsEndTests")]
 public class PostBrokerTests(LimitTestEnvironment factory) : LimitFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LimitationWorksForUser()
     {
@@ -28,6 +29,7 @@ public class PostBrokerTests(LimitTestEnvironment factory) : LimitFeatureTest(fa
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task LimitationWorksForInstance()
     {

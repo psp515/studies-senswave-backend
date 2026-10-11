@@ -98,6 +98,7 @@ public class UpdateDeviceTests(BaseTestEnvironment factory) : BaseFeatureTest(fa
         Assert.Null(device.Tile.DisplayableOperationId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task BooleanOperationRejectedForDisplayTile()
     {

@@ -9,6 +9,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class AssignHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -24,6 +25,7 @@ public class AssignHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorks()
     {
@@ -66,6 +68,7 @@ public class AssignHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal("NotStarted", home["dataSource"]!["state"]!.ToString());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FriendCannotPutBrokerForHome()
     {
@@ -84,6 +87,7 @@ public class AssignHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotChangeDataSourceForHomeIfDevicesAvailable()
     {
@@ -103,6 +107,7 @@ public class AssignHomeDataSourceTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotReassignNewDataSourceIfAlreadyAssigned()
     {

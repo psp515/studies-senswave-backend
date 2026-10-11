@@ -7,6 +7,7 @@ namespace Senswave.Homes.EndTests.Base.Homes;
 [Trait("Collection", "EndTest")]
 public class PostHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -23,6 +24,7 @@ public class PostHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IsValidationWorking()
     {
@@ -43,6 +45,7 @@ public class PostHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IsValidationWorkingWithoutLocalization()
     {
@@ -115,6 +118,7 @@ public class PostHomeTest(BaseTestEnvironment factory) : BaseFeatureTest(factory
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task HomeNameAlreadyUsed()
     {

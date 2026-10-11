@@ -8,6 +8,7 @@ namespace Senswave.DataSources.EndTests.Base.Clients;
 [Trait("Collection", "EndTest")]
 public class RestartClientTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -22,6 +23,7 @@ public class RestartClientTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsToRestartNotWorkingClient()
     {
@@ -38,6 +40,7 @@ public class RestartClientTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.Equal(HttpStatusCode.NotFound, stopResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCanRestartConnection()
     {

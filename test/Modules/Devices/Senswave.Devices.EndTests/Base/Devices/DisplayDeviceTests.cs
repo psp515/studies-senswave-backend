@@ -12,6 +12,7 @@ public class DisplayDeviceTests(BaseTestEnvironment factory) : BaseFeatureTest(f
 {
     public static List<object[]> CanDisplayPriviliges => HomePriviliges;
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -123,6 +124,7 @@ public class DisplayDeviceTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.Equal(deviceId.ToString(), device["id"]!.ToString());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderHasNoAccess()
     {

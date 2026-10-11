@@ -7,6 +7,7 @@ namespace Senswave.Automations.EndTests.Base;
 [Trait("Collection", "EndTest")]
 public class AutomationStateTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -43,6 +44,7 @@ public class AutomationStateTests(BaseTestEnvironment factory) : BaseFeatureTest
         await AssertAutomationIsEnableProperty(entities.AutomationId, getResponse, isAutomationEnable);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousUserCanNotEnableAutomation()
     {
@@ -87,6 +89,7 @@ public class AutomationStateTests(BaseTestEnvironment factory) : BaseFeatureTest
         await AssertAutomationIsEnableProperty(entities.AutomationId, getResponse, isAutomationEnable);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserWithDisplayPrivilegeCanNotEnableAutomation()
     {

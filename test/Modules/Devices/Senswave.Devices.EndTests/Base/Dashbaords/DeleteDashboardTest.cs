@@ -5,6 +5,7 @@ namespace Senswave.Devices.EndTests.Base.Dashbaords;
 [Trait("Collection", "EndTest")]
 public class DeleteDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -35,6 +36,7 @@ public class DeleteDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NotFound, getDashboardResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousCanNotDeleteDashboard()
     {
@@ -75,6 +77,7 @@ public class DeleteDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NotFound, getDashboardResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotDeleteDashbaord(string privilege)

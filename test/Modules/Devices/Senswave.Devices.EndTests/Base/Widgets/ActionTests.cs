@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Widgets;
 [Trait("Collection", "EndTest")]
 public class ActionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -25,6 +26,7 @@ public class ActionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task BrokerMustBeConnected()
     {
@@ -45,6 +47,7 @@ public class ActionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCannotInvoke()
     {

@@ -7,6 +7,7 @@ namespace Senswave.Automations.EndTests.Base;
 public class GetAutomationTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -39,6 +40,7 @@ public class GetAutomationTests(BaseTestEnvironment factory) : BaseFeatureTest(f
     }
 
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserCanNotGetNotExistingAutomation()
     {
@@ -52,6 +54,7 @@ public class GetAutomationTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousUserCanNotGetAutomation()
     {

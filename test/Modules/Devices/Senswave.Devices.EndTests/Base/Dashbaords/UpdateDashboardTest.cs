@@ -7,6 +7,7 @@ namespace Senswave.Devices.EndTests.Base.Dashbaords;
 [Trait("Collection", "EndTest")]
 public class UpdateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -39,6 +40,7 @@ public class UpdateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousUserCanNotUpdateDashboard()
     {
@@ -58,6 +60,7 @@ public class UpdateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task DuplicateDashboardNameNotAllowed()
     {
@@ -99,6 +102,7 @@ public class UpdateDashboardTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotPatchDashboard(string privilege)

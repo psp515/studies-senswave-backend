@@ -9,6 +9,7 @@ namespace Senswave.Devices.EndTests.Mqtt.Devices.Presence;
 [Trait("Collection", "MqttEndTest")]
 public class PresenceGatingMqttTests(MqttTestEnvironment factory) : MqttFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesTileAction()
     {

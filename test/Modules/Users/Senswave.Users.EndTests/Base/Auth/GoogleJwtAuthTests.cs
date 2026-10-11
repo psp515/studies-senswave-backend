@@ -166,6 +166,7 @@ public class GoogleJwtAuthTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.NotNull(userFoundByExternalId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [InlineData("SomePassword123!")]
     [InlineData("")]
@@ -212,6 +213,7 @@ public class GoogleJwtAuthTests(BaseTestEnvironment factory) : BaseFeatureTest(f
         Assert.NotNull(userFoundByExternalId);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsWhenInvalid()
     {

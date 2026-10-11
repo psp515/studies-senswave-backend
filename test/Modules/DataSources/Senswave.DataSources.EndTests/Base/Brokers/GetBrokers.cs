@@ -6,6 +6,7 @@ namespace Senswave.DataSources.EndTests.Base.Brokers;
 [Trait("Collection", "EndTest")]
 public class GetBrokers(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -38,6 +39,7 @@ public class GetBrokers(BaseTestEnvironment factory) : BaseFeatureTest(factory)
         Assert.True(brokerConnections.Items.Any());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsToGetSecondPage()
     {

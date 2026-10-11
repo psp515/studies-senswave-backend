@@ -6,6 +6,7 @@ namespace Senswave.Automations.EndTests.Base;
 [Trait("Collection", "EndTest")]
 public class DisplayAutomationsTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -56,6 +57,7 @@ public class DisplayAutomationsTest(BaseTestEnvironment factory) : BaseFeatureTe
         Assert.Contains(entities.AutomationId, automationIds);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousUserCanGetAutomations()
     {

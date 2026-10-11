@@ -8,6 +8,7 @@ namespace Senswave.Homes.EndTests.Base.Rooms;
 [Trait("Collection", "EndTest")]
 public class GetRoomsTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndPoint()
     {

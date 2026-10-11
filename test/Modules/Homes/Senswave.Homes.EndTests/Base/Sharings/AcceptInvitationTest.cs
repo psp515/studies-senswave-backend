@@ -11,6 +11,7 @@ namespace Senswave.Homes.EndTests.Base.Sharings;
 [Trait("Collection", "EndTest")]
 public class AcceptInvitationTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -56,6 +57,7 @@ public class AcceptInvitationTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorks()
     {
@@ -79,6 +81,7 @@ public class AcceptInvitationTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IntruderCannotAcceptInvitation()
     {
@@ -100,6 +103,7 @@ public class AcceptInvitationTest(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvitationExpires()
     {

@@ -8,6 +8,7 @@ public class DisplayWidgetsTests(BaseTestEnvironment factory) : BaseFeatureTest(
 {
     public static List<object[]> CanDisplayPriviliges => DevicePrivileges;
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -40,6 +41,7 @@ public class DisplayWidgetsTests(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Single(json["items"]!.AsArray()![0]!["widgets"]!.AsArray());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task WidgetsNotFound()
     {

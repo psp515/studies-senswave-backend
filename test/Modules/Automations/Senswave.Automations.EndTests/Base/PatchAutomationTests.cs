@@ -8,6 +8,7 @@ namespace Senswave.Automations.EndTests.Base;
 [Trait("Collection", "EndTest")]
 public class PatchAutomationTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -43,6 +44,7 @@ public class PatchAutomationTests(BaseTestEnvironment factory) : BaseFeatureTest
         await AssertNameChanged(getResponse, entities.AutomationId, automationName);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousCanNotPatchAutomation()
     {
@@ -61,6 +63,7 @@ public class PatchAutomationTests(BaseTestEnvironment factory) : BaseFeatureTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task UserWithoutPrivilegesCannotPatchAutomation()
     {

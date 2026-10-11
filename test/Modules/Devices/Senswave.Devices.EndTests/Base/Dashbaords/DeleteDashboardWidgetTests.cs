@@ -8,6 +8,7 @@ namespace Senswave.Devices.EndTests.Base.Dashbaords;
 [Trait("Collection", "EndTest")]
 public class DeleteDashboardWidgetTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -43,6 +44,7 @@ public class DeleteDashboardWidgetTests(BaseTestEnvironment factory) : BaseFeatu
         Assert.Empty(quereiedDashboard!.Configuration["positionedWidgets"]!.AsArray());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCanNotAct()
     {
@@ -77,6 +79,7 @@ public class DeleteDashboardWidgetTests(BaseTestEnvironment factory) : BaseFeatu
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotDeleteWidgetFromDashboard(string privilege)

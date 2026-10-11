@@ -6,6 +6,7 @@ namespace Senswave.DataSources.EndTests.Base.Subscribtions;
 [Trait("Collection", "EndTest")]
 public class DeleteSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -37,6 +38,7 @@ public class DeleteSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task NotOwnerCannotDeleteSubscribtion()
     {
@@ -104,6 +106,7 @@ public class DeleteSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.Contains(subscriptions.Items, x => x.Topic == topicToKeep);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task DeleteNonExistentSubscribtionReturnsNotFound()
     {
@@ -120,6 +123,7 @@ public class DeleteSubscribtionTests(BaseTestEnvironment factory) : BaseFeatureT
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task DeleteSubscribtionFromNonExistentBrokerReturnsNotFound()
     {

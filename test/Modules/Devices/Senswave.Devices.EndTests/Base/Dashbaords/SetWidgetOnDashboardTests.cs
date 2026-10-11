@@ -9,6 +9,7 @@ namespace Senswave.Devices.EndTests.Base.Dashbaords;
 [Trait("Collection", "EndTest")]
 public class SetWidgetOnDashboardTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -46,6 +47,7 @@ public class SetWidgetOnDashboardTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(widget, quereiedDashboard!.Configuration["positionedWidgets"]!.AsArray()[0]!["widgetId"]!.GetValue<Guid>());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task WidgetDoesNotExist()
     {
@@ -62,6 +64,7 @@ public class SetWidgetOnDashboardTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ValidationWorks()
     {
@@ -79,6 +82,7 @@ public class SetWidgetOnDashboardTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MalciousCanNotAct()
     {
@@ -114,6 +118,7 @@ public class SetWidgetOnDashboardTests(BaseTestEnvironment factory) : BaseFeatur
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotSetWidgetOnDashboard(string privilege)

@@ -43,6 +43,7 @@ public class TimeSeriesGraphWidgetTests(BaseTestEnvironment factory) : BaseFeatu
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidUnit()
     {
@@ -62,6 +63,7 @@ public class TimeSeriesGraphWidgetTests(BaseTestEnvironment factory) : BaseFeatu
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidinitialNumberOfData()
     {
@@ -81,6 +83,7 @@ public class TimeSeriesGraphWidgetTests(BaseTestEnvironment factory) : BaseFeatu
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task InvalidDisplayType()
     {
@@ -100,6 +103,7 @@ public class TimeSeriesGraphWidgetTests(BaseTestEnvironment factory) : BaseFeatu
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task BooleanOperationNotSupported()
     {

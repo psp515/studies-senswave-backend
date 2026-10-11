@@ -8,6 +8,7 @@ namespace Senswave.Devices.EndTests.Base.Operations;
 [Trait("Collection", "EndTest")]
 public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -60,6 +61,7 @@ public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.False(dataReferenceExists);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotDeleteOperationWhenUsedByWidget()
     {
@@ -79,6 +81,7 @@ public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.OK, checkExistenceResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotDeleteOperationWhenUsedByDeviceTile()
     {
@@ -99,6 +102,7 @@ public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task CannotDeleteOperationWhenUsedByDeviceTileAndWidget()
     {
@@ -119,6 +123,7 @@ public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task FailsOnInvalidOperationGuid()
     {
@@ -133,6 +138,7 @@ public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousCanNotOperate()
     {
@@ -173,6 +179,7 @@ public class DeleteOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(
         Assert.Equal(HttpStatusCode.NotFound, checkExistenceResponse.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Theory]
     [MemberData(nameof(NotManageDevicePrivileges))]
     public async Task FriendCanNotOperate(string privilege)

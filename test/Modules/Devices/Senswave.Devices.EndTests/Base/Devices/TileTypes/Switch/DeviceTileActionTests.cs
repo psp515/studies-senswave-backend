@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Devices.TileTypes.Switch;
 [Trait("Collection", "EndTest")]
 public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -27,6 +28,7 @@ public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ActionFailsIfNoWorkingBroker()
     {
@@ -49,6 +51,7 @@ public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task IfNotOwnerCanNotInvokeAction()
     {
@@ -71,6 +74,7 @@ public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task TileActionAllowedWithDefaultPresence()
     {
@@ -94,6 +98,7 @@ public class DeviceTileActionTests(BaseTestEnvironment factory) : BaseFeatureTes
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task TileActionPresenceGatesAccess()
     {

@@ -6,6 +6,7 @@ namespace Senswave.Devices.EndTests.Base.Operations;
 [Trait("Collection", "EndTest")]
 public class GetOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(factory)
 {
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task ShouldBeSecuredEndpoint()
     {
@@ -39,6 +40,7 @@ public class GetOperationTest(BaseTestEnvironment factory) : BaseFeatureTest(fac
         Assert.True(data["configuration"]!["isJson"]!.GetValue<bool>());
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task MaliciousCanNotOperate()
     {

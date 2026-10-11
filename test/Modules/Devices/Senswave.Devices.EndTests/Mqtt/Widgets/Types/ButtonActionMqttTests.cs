@@ -274,6 +274,7 @@ public class ButtonActionMqttTests(MqttTestEnvironment factory) : MqttFeatureTes
         await StopBrokerClientInternal(broker);
     }
 
+    [Trait("Category", "FailurePath")]
     [Fact]
     public async Task PresenceGatesButtonAction()
     {
