@@ -393,6 +393,8 @@ Every step below is its own short-lived branch and its own PR to `main` (decided
 
 Auth goes first. In `Grpc` mode the Identity REST API is not mapped, so every gRPC test logs in through `AuthService.Login`, and nothing else can be tested until it exists. The consent interceptor (3b) must exist before any module service is exposed. LiveUpdates goes last because its test publishes device updates.
 
+*Implementation note (2026-10-11):* steps 1–8 were delivered as separate commits on one branch (`grpc/pr1-contracts-infrastructure`), by owner decision, in dependency order: 1, 2, 3, 3b, then **DataSources (5), Homes (6), Devices (7), Automations (4)**, then LiveUpdates (8). Automations moved after Devices because its tests need a home with a data source, a device, and operations, which in `Grpc` mode can only be created through those services. Known test gaps: `RestartClient` has no success-path test (it succeeds only for a client that lost its connection; the REST suite has none either), and the owner-path assertion is `GetHome.is_owner` because devices carry no owner of their own.
+
 ## Known gaps
 
 - **gRPC methods are unthrottled**, auth and live-update subscriptions included. Accepted (2026-10-10); rate limiting can be disabled in any mode (Spec D).
