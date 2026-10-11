@@ -13,13 +13,19 @@ services:
     networks:
       - senswave_network
     volumes: 
-      - api-https:/https/
+      - ./https:/https:ro
       - api-log:/app/logs
     ports:
-     - ${API_HTTP_PORT}:8080
+     - ${API_HTTPS_PORT}:8443
      - ${API_HEALTH_PORT}:5001
     env_file:
     - .env
+    environment:
+      # Api traffic (REST, gRPC, gRPC-Web) is HTTPS only, HTTP/1.1 + HTTP/2 (Kestrel needs TLS for HTTP/2).
+      # 5001 stays plain HTTP for the health check. Certificate: docker/generate-cert.sh.
+      - ASPNETCORE_URLS=https://+:8443;http://+:5001
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/senswave.api.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=${API_CERTIFICATE_PASSWORD}
     depends_on:
       senswave.database:
         condition: service_healthy
@@ -138,6 +144,11 @@ services:
         - senswave_network
     env_file: 
         - .env
+    volumes:
+        - ./https/senswave.api.crt:/https/senswave.api.crt:ro
+    environment:
+        # Trust the API's self-signed certificate (docker/generate-cert.sh). Seed only calls the API.
+        - SSL_CERT_FILE=/https/senswave.api.crt
     depends_on:
         senswave.api:
           condition: service_healthy
@@ -155,8 +166,6 @@ volumes:
   messagebus-log:
     driver: local
   database-data:
-    driver: local
-  api-https:
     driver: local
   api-log:
     driver: local

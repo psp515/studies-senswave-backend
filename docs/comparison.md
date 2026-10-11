@@ -37,6 +37,8 @@ New REST failure-path tests must carry the tag. An untagged one silently enters 
 
 ## Running instances (load and latency)
 
+[`performance/`](../performance/README.md) has a ready setup: one container per transport from the same image, and k6 scripts.
+
 Use the same image and configuration for each instance. Only the mode changes:
 
 ```bash
@@ -45,7 +47,7 @@ Transport__Mode=Grpc     RateLimiter__Enabled=false
 Transport__Mode=GrpcWeb  RateLimiter__Enabled=false
 ```
 
-Kestrel serves HTTP/1.1 and HTTP/2 on every endpoint (`Kestrel:EndpointDefaults:Protocols=Http1AndHttp2`), but **HTTP/2 needs TLS** there. A plain-HTTP endpoint serves HTTP/1.1 only. Native gRPC therefore needs an HTTPS endpoint, while REST and gRPC-Web work on either. The Docker template binds plain HTTP, so a native-gRPC instance needs HTTPS configured (see Spec B, "Implementation notes").
+Kestrel serves HTTP/1.1 and HTTP/2 on every endpoint (`Kestrel:EndpointDefaults:Protocols=Http1AndHttp2`), but **HTTP/2 needs TLS** there. A plain-HTTP endpoint serves HTTP/1.1 only. Native gRPC therefore needs an HTTPS endpoint, while REST and gRPC-Web work on either. The Docker setup serves the API over HTTPS only (container port `8443`, host port `API_HTTPS_PORT`), so every mode, native gRPC included, runs over TLS with HTTP/1.1 or HTTP/2. Run `docker/generate-cert.sh` first and give clients `docker/https/senswave.api.crt` (see `docker/README.md`). Compare transports over HTTPS in every mode, so TLS cost is the same for all three.
 
 Traces from all modes can share one collector. Each instance tags its resource with `senswave.transport` = `Rest` | `Grpc` | `GrpcWeb`, which is how to tell them apart.
 

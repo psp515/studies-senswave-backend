@@ -172,6 +172,10 @@ jobs:
         working-directory: docker
         run: cp .env.template .env
 
+      - name: Generate API certificate
+        working-directory: docker
+        run: sh generate-cert.sh
+
       - name: Drop volumes (clean environment)
         run: docker volume prune -f
 
