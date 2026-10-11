@@ -1,4 +1,5 @@
 ﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using Senswave.Contracts.DataSources.V1;
 using Senswave.Contracts.Devices.V1;
 using Senswave.Contracts.Homes.V1;
@@ -45,8 +46,16 @@ public class DeviceActionsMqttTests(GrpcMqttTestEnvironment environment) : GrpcM
         }
         finally
         {
-            await new DataSourcesService.DataSourcesServiceClient(channel)
-                .StopClientAsync(new StopClientRequest { BrokerId = brokerId });
+            // Best-effort cleanup: StopClient is asserted in BrokerClientServiceTests. Here the client may still be
+            // settling after StartClient, and a refused stop must not fail the action assertions above.
+            try
+            {
+                await new DataSourcesService.DataSourcesServiceClient(channel)
+                    .StopClientAsync(new StopClientRequest { BrokerId = brokerId });
+            }
+            catch (RpcException)
+            {
+            }
         }
     }
 }
