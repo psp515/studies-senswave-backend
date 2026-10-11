@@ -1,13 +1,16 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Senswave.Abstractions.Modules;
+using Senswave.Automations.Api.Grpc;
 using Senswave.Automations.Application;
 using Senswave.Automations.Domain;
 using Senswave.Automations.Infrastructure;
+using Senswave.Infrastructure.Grpc.Modules;
 
 namespace Senswave.Automations.Api;
 
-public class AutomationsModule : ISenswaveModule
+public class AutomationsModule : ISenswaveModule, ISenswaveGrpcModule
 {
     public const string ModuleName = "Automations";
 
@@ -25,5 +28,10 @@ public class AutomationsModule : ISenswaveModule
         services.AddAutomationsApplication();
         services.AddAutomationsInfrastructure();
         services.AddMinimalApiEndpoints(assembly);
+    }
+
+    public void MapGrpcServices(IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGrpcService<AutomationsGrpcService>();
     }
 }
