@@ -75,6 +75,12 @@ jobs:
       - name: Run End Tests
         run: dotnet test --no-build --configuration Release --filter "Collection=EndTest" --collect:"XPlat Code Coverage" --results-directory TestResults
 
+      - name: Run gRPC End Tests
+        run: dotnet test --no-build --configuration Release --filter "Collection=EndTestGrpc" --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Run gRPC-Web End Tests
+        run: dotnet test --no-build --configuration Release --filter "Collection=EndTestGrpcWeb" --collect:"XPlat Code Coverage" --results-directory TestResults
+
       - name: Cache End Test Results
         uses: actions/cache@v4
         with:
@@ -97,6 +103,9 @@ jobs:
 
       - name: Run MQTT End Tests
         run: dotnet test --no-build --configuration Release --filter "Collection=MqttEndTest" --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Run gRPC MQTT End Tests
+        run: dotnet test --no-build --configuration Release --filter "Collection=MqttEndTestGrpc" --collect:"XPlat Code Coverage" --results-directory TestResults
 
       - name: Upload MQTT End Test Logs
         if: failure()
@@ -280,7 +289,7 @@ jobs:
 
       - name: Generate Coverage Report
         continue-on-error: true
-        run: reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;Badges;TextSummary" -classfilters:"-*.Migrations.*" -assemblyfilters:"-*.EndTests;-Senswave.TestInfrastructure"
+        run: reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:"Html;Badges;TextSummary" -classfilters:"-*.Migrations.*" -assemblyfilters:"-*.EndTests;-*.EndTestsGrpc;-*.EndTestsGrpcWeb;-Senswave.TestInfrastructure"
 
       - name: Display Coverage Summary
         continue-on-error: true

@@ -1,4 +1,5 @@
 ﻿using Asp.Versioning;
+using Grpc.AspNetCore.Web;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
@@ -254,6 +255,10 @@ public class Startup
         app.UseCors(SenswaveNetWebsitePolicy);
 
         app.UseRouting();
+
+        // gRPC-Web translates browser requests into gRPC calls; it must run after UseCors and UseRouting.
+        if (_transport.Mode == TransportMode.GrpcWeb)
+            app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 
         if (rateLimitingOptions.Value.Enabled)
             app.UseRateLimiter();
