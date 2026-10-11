@@ -2,7 +2,7 @@
 
 **Branch:** one short-lived branch per step, each merged to `main` by its own PR after owner review — see Spec A, "Delivery"
 **Depends on:** nothing
-**Status:** design approved 2026-09-16; revised 2026-10-10 for the single-branch, config-switched transport design. Contracts for 73 operations landed in `605afa2`. The Users proto additions, Deliverables 2–3, and the guard test remain, and all of them ship together as PR 1.
+**Status:** design approved 2026-09-16; revised 2026-10-10 for the single-branch, config-switched transport design. Contracts for 73 operations landed in `605afa2`. The Users proto additions, Deliverables 2–3, and the guard test ship together as PR 1 (implemented 2026-10-10).
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Consequences for this spec: none to the contracts. The infrastructure below must
 In scope:
 
 - A new shared project holding every `.proto` file and the generated C# types. **Done (`605afa2`).**
-- Protobuf definitions for every operation with a gRPC equivalent. **Mostly done.** `605afa2` covers 73 operations. The Users additions below (`UpdateSettings`, legal, auth, account management) are part of this spec's remaining work.
+- Protobuf definitions for every operation with a gRPC equivalent. **Done.** `605afa2` covers 73 operations; PR 1 adds the Users additions below (`UpdateSettings`, legal, auth, account management).
 - The protobuf contract for the gRPC live-updates stream, the gRPC counterpart of the SignalR hub. **Done.**
 - A new shared project holding gRPC cross-cutting infrastructure: error mapping and telemetry.
 - Central package registration for the gRPC dependency set.
@@ -78,7 +78,7 @@ Users, endpoint by endpoint:
 
 `Senswave.LiveUpdates.Api` implements no `IEndpoint`. It exposes a SignalR hub, which Spec A keeps for REST mode and pairs with the `LiveUpdatesService` streaming contract for gRPC modes.
 
-## Deliverable 1 — `src/Shared/Senswave.Contracts` (mostly done)
+## Deliverable 1 — `src/Shared/Senswave.Contracts` (done)
 
 A `net10.0` class library in `Senswave.sln`, targeting `Debug;Release;Tests`.
 
@@ -99,10 +99,10 @@ src/Shared/Senswave.Contracts/
     homes/v1/homes.proto
     homes/v1/rooms.proto
     homes/v1/sharing.proto
-    users/v1/users.proto        (add UpdateSettings)
-    users/v1/legal.proto        (to add: LegalService)
-    users/v1/auth.proto         (to add: AuthService)
-    users/v1/account.proto      (to add: AccountService)
+    users/v1/users.proto        (UsersService, incl. UpdateSettings)
+    users/v1/legal.proto        (LegalService)
+    users/v1/auth.proto         (AuthService)
+    users/v1/account.proto      (AccountService)
     liveupdates/v1/liveupdates.proto
 ```
 

@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package senswave.users.v1;
+
+option csharp_namespace = "Senswave.Contracts.Users.V1";
+
+// gRPC equivalent of the ASP.NET Identity API (MapIdentityApi<User>) authentication routes.
+// Cookie modes (useCookies, useSessionCookies) are not modelled.
+service AuthService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (AccessTokenResponse);
+  rpc Refresh(RefreshRequest) returns (AccessTokenResponse);
+  rpc ConfirmEmail(ConfirmEmailRequest) returns (ConfirmEmailResponse);
+  rpc ResendConfirmationEmail(ResendConfirmationEmailRequest) returns (ResendConfirmationEmailResponse);
+  rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+}
+
+// Mirrors Microsoft.AspNetCore.Authentication.BearerToken.AccessTokenResponse.
+message AccessTokenResponse {
+  string token_type = 1;
+  string access_token = 2;
+  int64 expires_in = 3;
+  string refresh_token = 4;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RegisterResponse {}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  optional string two_factor_code = 3;
+  optional string two_factor_recovery_code = 4;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+message ConfirmEmailRequest {
+  string user_id = 1;
+  string code = 2;
+  optional string changed_email = 3;
+}
+
+message ConfirmEmailResponse {}
+
+message ResendConfirmationEmailRequest {
+  string email = 1;
+}
+
+message ResendConfirmationEmailResponse {}
+
+message ForgotPasswordRequest {
+  string email = 1;
+}
+
+message ForgotPasswordResponse {}
+
+message ResetPasswordRequest {
+  string email = 1;
+  string reset_code = 2;
+  string new_password = 3;
+}
+
+message ResetPasswordResponse {}

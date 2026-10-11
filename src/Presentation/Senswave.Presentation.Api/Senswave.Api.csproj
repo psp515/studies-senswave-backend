@@ -36,6 +36,7 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.MassTransit" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Process" />
@@ -72,6 +73,7 @@
     <ProjectReference Include="..\..\Modules\Users\Senswave.Users.Infrastructure\Senswave.Users.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\Senswave.Abstractions\Senswave.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\Senswave.Infrastructure\Senswave.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\Senswave.Infrastructure.Grpc\Senswave.Infrastructure.Grpc.csproj" />
     <ProjectReference Include="..\..\Shared\Senswave.Integration\Senswave.Integration.csproj" />
   </ItemGroup>
 

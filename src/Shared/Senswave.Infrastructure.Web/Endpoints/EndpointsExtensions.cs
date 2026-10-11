@@ -32,6 +32,20 @@ public static class EndpointsExtensions
         }
     }
 
+    /// <summary>
+    /// Maps only <see cref="INavigationEndpoint"/>s. Used in gRPC transport modes, where no other endpoint is mapped.
+    /// </summary>
+    public static void MapNavigationEndpoints(this IEndpointRouteBuilder endpointRouteBuilder, IEnumerable<IEndpoint> endpoints)
+    {
+        foreach (IEndpoint endpoint in endpoints)
+        {
+            if (endpoint is not INavigationEndpoint)
+                continue;
+
+            endpoint.Map(endpointRouteBuilder);
+        }
+    }
+
     public static void MapPublicEndpoints(this IEndpointRouteBuilder endpointRouteBuilder, IEnumerable<IEndpoint> endpoints)
     {
         foreach (IEndpoint endpoint in endpoints)

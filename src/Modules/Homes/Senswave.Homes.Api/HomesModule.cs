@@ -1,13 +1,16 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Senswave.Abstractions.Modules;
+using Senswave.Homes.Api.Grpc;
 using Senswave.Homes.Application;
 using Senswave.Homes.Domain;
 using Senswave.Homes.Infrastructure;
+using Senswave.Infrastructure.Grpc.Modules;
 
 namespace Senswave.Homes.Api;
 
-public class HomesModule : ISenswaveModule
+public class HomesModule : ISenswaveModule, ISenswaveGrpcModule
 {
     public const string ModuleName = "Homes";
 
@@ -27,5 +30,12 @@ public class HomesModule : ISenswaveModule
         services.AddHomesApplication();
         services.AddHomesInfrastructure();
         services.AddMinimalApiEndpoints(assembly);
+    }
+
+    public void MapGrpcServices(IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGrpcService<HomesGrpcService>();
+        endpoints.MapGrpcService<RoomsGrpcService>();
+        endpoints.MapGrpcService<SharingGrpcService>();
     }
 }

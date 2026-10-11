@@ -8,6 +8,7 @@ service UsersService {
   rpc CreateConsents(CreateConsentsRequest) returns (CreateConsentsResponse);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
 }
 
 message CreateConsentsRequest {}
@@ -27,3 +28,10 @@ message GetUserResponse {
   string language = 4;
   bool has_active_consent = 5;
 }
+
+message UpdateSettingsRequest {
+  string language = 1;
+  string theme = 2;
+}
+
+message UpdateSettingsResponse {}

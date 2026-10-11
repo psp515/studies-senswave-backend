@@ -1,13 +1,16 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Senswave.Abstractions.Modules;
+using Senswave.Devices.Api.Grpc;
 using Senswave.Devices.Application;
 using Senswave.Devices.Domain;
 using Senswave.Devices.Infrastructure;
+using Senswave.Infrastructure.Grpc.Modules;
 
 namespace Senswave.Devices.Api;
 
-public class DevicesModule : ISenswaveModule
+public class DevicesModule : ISenswaveModule, ISenswaveGrpcModule
 {
     public const string ModuleName = "Devices";
 
@@ -29,5 +32,14 @@ public class DevicesModule : ISenswaveModule
         services.AddDevicesInfrastructure();
         services.AddDevicesApplication();
         services.AddDevicesDomain(configuration);
+    }
+
+    public void MapGrpcServices(IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGrpcService<DevicesGrpcService>();
+        endpoints.MapGrpcService<DashboardsGrpcService>();
+        endpoints.MapGrpcService<OperationsGrpcService>();
+        endpoints.MapGrpcService<SharingGrpcService>();
+        endpoints.MapGrpcService<WidgetsGrpcService>();
     }
 }

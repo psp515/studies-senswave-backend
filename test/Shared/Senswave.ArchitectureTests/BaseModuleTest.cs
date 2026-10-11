@@ -19,6 +19,9 @@ public abstract class BaseModuleTest
             typeof(Result).Assembly,
         ];
 
+    // Shared Senswave.Infrastructure.* projects (Web, Grpc) are not module layers; SharedTests covers them.
+    private const string SharedInfrastructurePrefix = "Senswave.Infrastructure.";
+
     protected static Assembly[] GetSenswaveAssemblies()
     {
         var names = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll")
@@ -38,6 +41,7 @@ public abstract class BaseModuleTest
 
     protected Assembly[] GetInfrastructureAssemblies() => GetSenswaveAssemblies()
         .Where(a => a.FullName!.Contains("Infrastructure") && a.FullName != Infrastructure.FullName)
+        .Where(a => !a.GetName().Name!.StartsWith(SharedInfrastructurePrefix))
         .ToArray();
 
     protected Assembly[] GetApiAssemblies() => GetSenswaveAssemblies()
