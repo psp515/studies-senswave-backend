@@ -11,20 +11,22 @@ Current Evironments sets:
 - `messagebus` - Environment variables used in message bus
 - `seed` - Environment variables for seeding
 
-### Https with Environment Variables
+### HTTPS
 
-First step is to prepare certificates (this have to be made only once), example:
-- run ```dotnet dev-certs https -ep .\https\senswave.api.pfx -p password``` (run command in `docker` folder)
-- run ```dotnet dev-certs https --trust```
+The API container serves all API traffic (REST, gRPC, gRPC-Web) over HTTPS only, on container port `8443`
+(host port `API_HTTPS_PORT`), with HTTP/1.1 and HTTP/2. Kestrel needs TLS for HTTP/2, so native gRPC works only over HTTPS.
+Port `5001` (host port `API_HEALTH_PORT`) stays plain HTTP for the health check.
 
-Second step is adding proper environment variables in `api.env.template`:
-- set `ASPNETCORE_HTTPS_PORTS`
-- set `ASPNETCORE_Kestrel__Certificates__Default__Password`
-- set `ASPNETCORE_Kestrel__Certificates__Default__Path`
+Before the first `docker compose up`, generate the certificate (run in the `docker` folder):
 
-Third step adjust other environments like `Seed__Instance`.
+```bash
+sh generate-cert.sh
+```
 
-Now you can start docker compose
+It writes a self-signed `https/senswave.api.pfx` (served by Kestrel) and `https/senswave.api.crt`, valid for
+`api`, `localhost` and `127.0.0.1`. Pass a password as the first argument to change the default `password`, and set the
+same value in `API_CERTIFICATE_PASSWORD`. The seed container trusts the certificate through `SSL_CERT_FILE`.
+To call the API from the host, trust `https/senswave.api.crt` or pass it to your client (e.g. `curl --cacert https/senswave.api.crt`).
 
 ## Run Environment
 

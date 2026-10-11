@@ -165,7 +165,9 @@ The `Subscribe` tests assert `Initialized` arrives, then one published update ar
   | Native gRPC (HTTP/2) | **Fails**, `HTTP_1_1_REQUIRED` | OK (ALPN h2) |
   | CORS preflight and exposed headers | OK | not run |
 
-  Kestrel logs "HTTP/2 is not enabled ... TLS is not enabled" for plain-HTTP endpoints: `Http1AndHttp2` without TLS serves HTTP/1.1 only. **Open decision:** `docker/.env.template` binds plain HTTP only (`http://+:8080`), so in the container gRPC-Web works but native gRPC does not, which does not meet the "HTTP/1.1 and HTTP/2 in the container" criterion. Options: serve HTTPS in the container (a pfx volume is already mounted at `/https/`), or add a separate HTTP/2-only (h2c) endpoint for native gRPC.
+  Kestrel logs "HTTP/2 is not enabled ... TLS is not enabled" for plain-HTTP endpoints: `Http1AndHttp2` without TLS serves HTTP/1.1 only. **Decided (2026-10-11): HTTPS in the container.** The API container serves all API traffic (REST, gRPC, gRPC-Web) over HTTPS only on `8443`, with HTTP/1.1 and HTTP/2 and nothing above HTTP/2. Port `5001` stays plain HTTP for the health check; any other request there is redirected to HTTPS, so `HealthCheckMiddleware` now runs before `UseHttpsRedirection`. `docker/generate-cert.sh` (openssl) makes a self-signed certificate for `api`, `localhost` and `127.0.0.1`, bind-mounted from `docker/https`; the seed container trusts it through `SSL_CERT_FILE`, and CI generates it before `docker compose up`. No h2c endpoint.
+
+  Verified on the compose stack: REST over HTTPS answers on HTTP/1.1 and HTTP/2; in `GrpcWeb` mode native gRPC (`LegalService.GetPrivacyPolicy`) returns `grpc-status: 0` over HTTP/2, and gRPC-Web answers over HTTP/1.1 and HTTP/2; plain HTTP on the API port is refused; the health check on `5001` returns 200.
 
 ## Known gaps
 

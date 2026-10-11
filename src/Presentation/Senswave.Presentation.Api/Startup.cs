@@ -250,6 +250,9 @@ public class Startup
             app.UseExceptionHandler();
         }
 
+        // Health runs before HTTPS redirection: the health port (5001) is plain HTTP and must answer, not redirect.
+        app.UseMiddleware<HealthCheckMiddleware>();
+
         app.UseHttpsRedirection();
 
         app.UseCors(SenswaveNetWebsitePolicy);
@@ -263,7 +266,6 @@ public class Startup
         if (rateLimitingOptions.Value.Enabled)
             app.UseRateLimiter();
 
-        app.UseMiddleware<HealthCheckMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
 

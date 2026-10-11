@@ -411,3 +411,6 @@ docker/mosquitto/data/mosquitto.db
 /coveragereport
 /coveragereport2
 *.lscache
+
+# Generated API container certificate (docker/generate-cert.sh)
+docker/https/*.crt
