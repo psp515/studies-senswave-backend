@@ -1,0 +1,100 @@
+name: senswave-perf
+
+# Three instances of the same API image, one per transport, for load testing (see README.md).
+# They differ only in Transport__Mode, their database and their host port.
+
+x-api: &api
+  image: senswave-perf-api
+  build:
+    context: ../
+    dockerfile: src/Presentation/Senswave.Presentation.Api/Dockerfile
+    args:
+      BUILD_CONFIGURATION: Release
+      BUILD_IMAGE_CONFIGURATION: release
+  networks:
+    - perf_network
+  volumes:
+    # Same certificate for all three instances (docker/generate-cert.sh).
+    - ../docker/https:/https:ro
+  cpus: ${API_CPUS}
+  mem_limit: ${API_MEMORY}
+  depends_on:
+    database:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD-SHELL", "curl -s http://localhost:5001/api/health | grep -q '\"status\":\"Healthy\"'"]
+    interval: 5s
+    timeout: 2s
+    retries: 10
+    start_period: 10s
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  # API traffic is HTTPS only (HTTP/1.1 + HTTP/2); 5001 is the internal plain-HTTP health port.
+  ASPNETCORE_URLS: https://+:8443;http://+:5001
+  ASPNETCORE_Kestrel__Certificates__Default__Path: /https/senswave.api.pfx
+  ASPNETCORE_Kestrel__Certificates__Default__Password: ${API_CERTIFICATE_PASSWORD}
+  # Comparison profile (docs/comparison.md): no ASP.NET Core rate limiting in any transport.
+  RateLimiter__Enabled: "false"
+  Diagnostics__OpenTelemetry__Enabled: "false"
+  MessageBus__Type: InMemory
+  Smtp__Enabled: "false"
+  PostgreSql__Host: database
+  PostgreSql__Port: "5432"
+  PostgreSql__Username: ${POSTGRES_USER}
+  PostgreSql__Password: ${POSTGRES_PASSWORD}
+
+services:
+  api-rest:
+    <<: *api
+    container_name: Senswave.Perf.Rest
+    environment:
+      <<: *api-environment
+      Transport__Mode: Rest
+      PostgreSql__Database: senswave_rest
+    ports:
+      - ${REST_PORT}:8443
+
+  api-grpc:
+    <<: *api
+    container_name: Senswave.Perf.Grpc
+    environment:
+      <<: *api-environment
+      Transport__Mode: Grpc
+      PostgreSql__Database: senswave_grpc
+    ports:
+      - ${GRPC_PORT}:8443
+
+  api-grpcweb:
+    <<: *api
+    container_name: Senswave.Perf.GrpcWeb
+    environment:
+      <<: *api-environment
+      Transport__Mode: GrpcWeb
+      PostgreSql__Database: senswave_grpcweb
+    ports:
+      - ${GRPCWEB_PORT}:8443
+
+  database:
+    image: postgres:17.6
+    container_name: Senswave.Perf.Database
+    networks:
+      - perf_network
+    volumes:
+      - perf-database-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-U", "${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+networks:
+  perf_network:
+    name: senswave-perf-network
+
+volumes:
+  perf-database-data:
+    driver: local

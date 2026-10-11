@@ -37,6 +37,8 @@ New REST failure-path tests must carry the tag. An untagged one silently enters 
 
 ## Running instances (load and latency)
 
+[`performance/`](../performance/README.md) has a ready setup: one container per transport from the same image, and k6 scripts.
+
 Use the same image and configuration for each instance. Only the mode changes:
 
 ```bash

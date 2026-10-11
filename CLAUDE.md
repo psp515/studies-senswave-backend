@@ -27,7 +27,7 @@ dotnet user-secrets init                                               # per-pro
 dotnet user-secrets set "Modules:Users:Auth:Google:ClientSecret" "<value>"
 ```
 
-Running everything via Docker is documented in [`docker/README.md`](docker/README.md) — copy `docker/.env.template` to `.env`, run `docker/generate-cert.sh` (self-signed cert for `api`/`localhost` into `docker/https`), then `docker-compose up -d`. The API container is HTTPS-only on `8443` (HTTP/1.1 + HTTP/2); `5001` is the plain-HTTP health port.
+Running everything via Docker is documented in [`docker/README.md`](docker/README.md) — copy `docker/.env.template` to `.env`, run `docker/generate-cert.sh` (self-signed cert for `api`/`localhost` into `docker/https`), then `docker-compose up -d`. The API container is HTTPS-only on `8443` (HTTP/1.1 + HTTP/2); `5001` is the plain-HTTP health port. Load testing setup (one container per transport plus k6 scripts) is in [`performance/README.md`](performance/README.md).
 
 ## Architecture
 
