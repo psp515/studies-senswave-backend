@@ -39,7 +39,9 @@ controller topics apart.
 
 Several users registering the same broker URL and port is rejected unless
 `Modules__DataSource__Brokers__AllowSharedBrokers=true` is set on the API, which the template does. Seeding is
-sequential and tests every broker connection, so 100 users take a few minutes.
+sequential and tests every broker connection, so 100 users take a few minutes. Registration and login go through the
+anonymous per-IP rate limiter; the template raises `RateLimiter__Anonymous__Token__*` for that, and the seed also waits and
+retries on `429 Too Many Requests`.
 
 ## Run Environment
 

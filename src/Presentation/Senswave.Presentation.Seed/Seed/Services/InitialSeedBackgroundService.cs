@@ -267,7 +267,7 @@ public class InitialSeedBackgroundService(
                 Password = user.Password
             };
 
-            await identityClient.Register(registerRequest);
+            await RateLimitRetry.ExecuteAsync(() => identityClient.Register(registerRequest), logger, $"Register {user.Email}");
 
             using var scope = serviceProvider.CreateScope();
 
@@ -304,7 +304,7 @@ public class InitialSeedBackgroundService(
                 Password = user.Password
             };
 
-            var response = await identityClient.Login(loginRequest);
+            var response = await RateLimitRetry.ExecuteAsync(() => identityClient.Login(loginRequest), logger, $"Login {user.Email}");
 
             return Result<AccessTokenResponse>.Success(response);
         }
