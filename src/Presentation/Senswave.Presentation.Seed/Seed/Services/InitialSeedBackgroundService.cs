@@ -41,7 +41,7 @@ public class InitialSeedBackgroundService(
         if (seedOptions.Value.DefaultUser is not null)
             users.Insert(0, seedOptions.Value.DefaultUser);
 
-        users.AddRange(seedOptions.Value.GeneratedUsers.Expand());
+        users.AddRange(seedOptions.Value.GeneratedUsers.Expand(fallbackBroker: seedOptions.Value.DefaultUser?.Broker));
 
         if (users.Count == 0)
         {

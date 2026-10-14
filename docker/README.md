@@ -33,7 +33,8 @@ To call the API from the host, trust `https/senswave.api.crt` or pass it to your
 The seed container registers the users from the `Seed__*` variables through the API after it becomes healthy.
 Besides `Seed__DefaultUser`, it can generate a batch of users from one template: `Seed__GeneratedUsers__Count` users
 named by `Seed__GeneratedUsers__EmailPattern` (`{0}` is the 1-based index), all with the same password, home, devices
-and automations, and all pointing at one shared MQTT broker given by `Seed__GeneratedUsers__Broker__*`. Each user
+and automations, and all pointing at one shared MQTT broker given by `Seed__GeneratedUsers__Broker__*` (with an empty
+`Url` they reuse the `Seed__DefaultUser` broker). Each user
 gets a unique broker client id, and `{0}` in `Seed__GeneratedUsers__Devices__PicoController__GlobalTopic` keeps the
 controller topics apart.
 

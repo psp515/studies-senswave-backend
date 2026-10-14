@@ -9,6 +9,8 @@ namespace Senswave.Presentation.Seed.Users.Options;
 /// Template for a batch of generated users. Every user gets the same password, role,
 /// broker, home, devices and automations. <c>{0}</c> in <see cref="EmailPattern"/> and in
 /// the Pico controller global topic is replaced with the user's 1-based index.
+/// When <see cref="Broker"/> has no URL, the fallback broker (the default user's) is used
+/// with this template's name, so credentials live in one place.
 /// </summary>
 public class GeneratedUsersOptions
 {
@@ -23,8 +25,23 @@ public class GeneratedUsersOptions
     public DeviceOptions Devices { get; set; } = new();
     public AutomationOptions Automations { get; set; } = new();
 
-    public IEnumerable<UserOptions> Expand()
+    public IEnumerable<UserOptions> Expand(BrokerOptions? fallbackBroker = null)
     {
+        var broker = Broker;
+
+        if (string.IsNullOrWhiteSpace(Broker.Url) && fallbackBroker is not null)
+        {
+            broker = new BrokerOptions
+            {
+                Create = Broker.Create,
+                Name = string.IsNullOrWhiteSpace(Broker.Name) ? fallbackBroker.Name : Broker.Name,
+                Url = fallbackBroker.Url,
+                Port = fallbackBroker.Port,
+                Username = fallbackBroker.Username,
+                Password = fallbackBroker.Password
+            };
+        }
+
         for (int index = 1; index <= Count; index++)
         {
             yield return new UserOptions
@@ -32,7 +49,7 @@ public class GeneratedUsersOptions
                 Email = string.Format(EmailPattern, index),
                 Password = Password,
                 Role = Role,
-                Broker = Broker,
+                Broker = broker,
                 Home = Home,
                 Automations = Automations,
                 Devices = new DeviceOptions

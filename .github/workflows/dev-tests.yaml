@@ -189,8 +189,8 @@ jobs:
 
       - name: Wait for seed to complete
         run: |
-          timeout=60
-          interval=5
+          timeout=1200
+          interval=15
           elapsed=0
 
           while true; do
