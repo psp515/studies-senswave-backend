@@ -1,6 +1,6 @@
 ﻿namespace Senswave.DataSources.Application.Brokers.Brokers.Features.UpdateBroker;
 
-internal class UpdateBrokerErrors
+public class UpdateBrokerErrors
 {
     public static Error UpdateFailed
         => Error.ServerError("UpdateFailed", "Update failed.");

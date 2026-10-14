@@ -40,7 +40,8 @@ public class UpdateBrokerHandler(
             var port = request.Port >= 1 && request.Port <= 65535 ? request.Port : broker.BrokerInfo.Port;
             var url = !string.IsNullOrEmpty(request.Url) ? request.Url : broker.BrokerInfo.Url;
 
-            var brokerExists = await queryRepository.BrokerExists(url, port, cancellationToken);
+            var brokerExists = !options.Value.AllowSharedBrokers
+                && await queryRepository.BrokerExists(url, port, cancellationToken);
 
             if (brokerExists)
             {

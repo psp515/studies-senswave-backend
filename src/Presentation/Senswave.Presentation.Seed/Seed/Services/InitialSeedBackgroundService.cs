@@ -41,13 +41,15 @@ public class InitialSeedBackgroundService(
         if (seedOptions.Value.DefaultUser is not null)
             users.Insert(0, seedOptions.Value.DefaultUser);
 
+        users.AddRange(seedOptions.Value.GeneratedUsers.Expand());
+
         if (users.Count == 0)
         {
             logger.LogInformation("No initial seed to run.");
             return;
         }
 
-        logger.LogInformation("Running initial seed...");
+        logger.LogInformation("Running initial seed for {userCount} users...", users.Count);
 
         int errorCount = 0;
 

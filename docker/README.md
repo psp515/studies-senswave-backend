@@ -28,6 +28,19 @@ It writes a self-signed `https/senswave.api.pfx` (served by Kestrel) and `https/
 same value in `API_CERTIFICATE_PASSWORD`. The seed container trusts the certificate through `SSL_CERT_FILE`.
 To call the API from the host, trust `https/senswave.api.crt` or pass it to your client (e.g. `curl --cacert https/senswave.api.crt`).
 
+### Seed
+
+The seed container registers the users from the `Seed__*` variables through the API after it becomes healthy.
+Besides `Seed__DefaultUser`, it can generate a batch of users from one template: `Seed__GeneratedUsers__Count` users
+named by `Seed__GeneratedUsers__EmailPattern` (`{0}` is the 1-based index), all with the same password, home, devices
+and automations, and all pointing at one shared MQTT broker given by `Seed__GeneratedUsers__Broker__*`. Each user
+gets a unique broker client id, and `{0}` in `Seed__GeneratedUsers__Devices__PicoController__GlobalTopic` keeps the
+controller topics apart.
+
+Several users registering the same broker URL and port is rejected unless
+`Modules__DataSource__Brokers__AllowSharedBrokers=true` is set on the API, which the template does. Seeding is
+sequential and tests every broker connection, so 100 users take a few minutes.
+
 ## Run Environment
 
 You can adjust ports in docker-compose on in .env.
