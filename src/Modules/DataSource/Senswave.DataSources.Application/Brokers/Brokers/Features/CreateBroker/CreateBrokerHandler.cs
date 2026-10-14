@@ -24,7 +24,8 @@ public class PostBrokerConnectionHandler(
             return Result<Broker>.Failure(CreateBrokerErrors.NameAlreadyUsed);
         }
 
-        var brokerExists = await queryRepository.BrokerExists(request.Url, request.Port, cancellationToken);
+        var brokerExists = !options.Value.AllowSharedBrokers
+            && await queryRepository.BrokerExists(request.Url, request.Port, cancellationToken);
 
         if (brokerExists)
         {

@@ -11,4 +11,6 @@ public class SeedOptions
     public UserOptions? DefaultUser { get; set; }
 
     public List<UserOptions> Users { get; set; } = [];
+
+    public GeneratedUsersOptions GeneratedUsers { get; set; } = new();
 }
