@@ -16,7 +16,7 @@ public class GeneratedUsersOptions
 {
     public int Count { get; set; } = 0;
 
-    public string EmailPattern { get; set; } = "user{0}@senswave.com";
+    public string EmailPattern { get; set; } = "user{0}@gmail.com";
     public string Password { get; set; } = "User123456!";
     public string Role { get; set; } = "user";
 

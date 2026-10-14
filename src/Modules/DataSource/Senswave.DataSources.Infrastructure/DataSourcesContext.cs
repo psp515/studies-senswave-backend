@@ -33,8 +33,8 @@ public class DataSourcesContext(IOptions<PostgreSqlOptions> options) : DbContext
                 {
                     owned.ToTable("BrokerInfo");
 
-                    owned.HasIndex(x => new { x.Url, x.Port })
-                        .IsUnique();
+                    // Not unique: several users may share one broker (see BrokerOptions.AllowSharedBrokers).
+                    owned.HasIndex(x => new { x.Url, x.Port });
 
                     owned.HasIndex(x => new { x.Url, x.Port, x.ClientName })
                         .IsUnique();

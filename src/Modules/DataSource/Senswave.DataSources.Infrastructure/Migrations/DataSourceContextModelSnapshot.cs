@@ -162,8 +162,7 @@ namespace Senswave.DataSources.Infrastructure.Migrations
 
                             b1.HasKey("BrokerId");
 
-                            b1.HasIndex("Url", "Port")
-                                .IsUnique();
+                            b1.HasIndex("Url", "Port");
 
                             b1.HasIndex("Url", "Port", "ClientName")
                                 .IsUnique();
