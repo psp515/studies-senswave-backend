@@ -39,7 +39,7 @@ public static class DiagnosticsExtensions
                 new KeyValuePair<string, object>(TransportAttributeName, transport.Mode.ToString())
             ]))
             .WithTracing(x => x
-                .SetSampler(new AlwaysOnSampler())
+                .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(options.TraceSamplingRatio)))
                 .AddSource(InfrastructureModule.DefaultListenerName)
                 .AddSource(DataSourcesModule.DefaultListenerName)
                 .AddSource(LiveUpdatesModule.DefaultListenerName)
@@ -83,7 +83,8 @@ public static class DiagnosticsExtensions
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
                 .AddMeter(Telemetry.SmtpClient.MeterName)
-                .AddOtlpExporter()
+                .AddOtlpExporter((_, reader) =>
+                    reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = options.MetricExportIntervalSeconds * 1000)
             );
 
         return services;

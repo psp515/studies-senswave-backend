@@ -21,7 +21,7 @@ public static class DiagnosticsExtensions
 
         services.AddOpenTelemetry()
             .WithTracing(x => x
-                .SetSampler(new AlwaysOnSampler())
+                .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(options.TraceSamplingRatio)))
                 .AddSource(InfrastructureModule.DefaultListenerName)
                 .AddSource(DataSourcesActivityProvider.DefaultListenerName)
                 .AddSource(DiagnosticHeaders.DefaultListenerName)
@@ -30,7 +30,8 @@ public static class DiagnosticsExtensions
             ).WithMetrics(x => x
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
-                .AddOtlpExporter()
+                .AddOtlpExporter((_, reader) =>
+                    reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = options.MetricExportIntervalSeconds * 1000)
             );
 
         return services;
