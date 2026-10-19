@@ -9,7 +9,6 @@ using Senswave.Abstractions.Transport;
 using Senswave.DataSources.Api;
 using Senswave.Infrastructure;
 using Senswave.Infrastructure.Diagnostics.OpenTelemetry;
-using Senswave.Infrastructure.Grpc;
 using Senswave.Infrastructure.Web.Diagnostics;
 using Senswave.Infrastructure.Web.Diagnostics.Health;
 using Senswave.LiveUpdates.Api;
@@ -39,13 +38,12 @@ public static class DiagnosticsExtensions
                 new KeyValuePair<string, object>(TransportAttributeName, transport.Mode.ToString())
             ]))
             .WithTracing(x => x
-                .SetSampler(new AlwaysOnSampler())
+                .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(options.TraceSamplingRatio)))
                 .AddSource(InfrastructureModule.DefaultListenerName)
                 .AddSource(DataSourcesModule.DefaultListenerName)
                 .AddSource(LiveUpdatesModule.DefaultListenerName)
                 .AddSource(UsersModule.DefaultListenerName)
                 .AddSource(DiagnosticHeaders.DefaultListenerName)
-                .AddSource(GrpcInfrastructureExtensions.DefaultListenerName)
                 .AddSource(Telemetry.SmtpClient.ActivitySourceName)
                 .AddAspNetCoreInstrumentation(x =>
                 {
@@ -83,7 +81,8 @@ public static class DiagnosticsExtensions
                 .AddRuntimeInstrumentation()
                 .AddProcessInstrumentation()
                 .AddMeter(Telemetry.SmtpClient.MeterName)
-                .AddOtlpExporter()
+                .AddOtlpExporter((_, reader) =>
+                    reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = options.MetricExportIntervalSeconds * 1000)
             );
 
         return services;

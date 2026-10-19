@@ -49,7 +49,7 @@ Transport__Mode=GrpcWeb  RateLimiter__Enabled=false
 
 Kestrel serves HTTP/1.1 and HTTP/2 on every endpoint (`Kestrel:EndpointDefaults:Protocols=Http1AndHttp2`), but **HTTP/2 needs TLS** there. A plain-HTTP endpoint serves HTTP/1.1 only. Native gRPC therefore needs an HTTPS endpoint, while REST and gRPC-Web work on either. The Docker setup serves the API over HTTPS only (container port `8443`, host port `API_HTTPS_PORT`), so every mode, native gRPC included, runs over TLS with HTTP/1.1 or HTTP/2. Run `docker/generate-cert.sh` first and give clients `docker/https/senswave.api.crt` (see `docker/README.md`). Compare transports over HTTPS in every mode, so TLS cost is the same for all three.
 
-Traces from all modes can share one collector. Each instance tags its resource with `senswave.transport` = `Rest` | `Grpc` | `GrpcWeb`, which is how to tell them apart.
+Traces from all modes can share one collector. Use the same `Diagnostics:OpenTelemetry:TraceSamplingRatio` (`Diagnostics__OpenTelemetry__TraceSamplingRatio`, default `1.0`, `0.01` in the shipped configs) in every instance, so tracing overhead is equal across transports; metrics such as `http.server.request.duration` are never sampled. `Diagnostics:OpenTelemetry:MetricExportIntervalSeconds` (default `60`, `10` in the shipped configs) sets how often aggregated metrics are exported; every request is counted whatever the interval, it only sets the time resolution of the charts. Each instance tags its resource with `senswave.transport` = `Rest` | `Grpc` | `GrpcWeb`, which is how to tell them apart.
 
 ## Coverage
 

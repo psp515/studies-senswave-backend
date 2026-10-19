@@ -1,7 +1,6 @@
 ﻿using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Logging;
-using Senswave.Infrastructure.Grpc.Diagnostics;
 using Senswave.Infrastructure.Grpc.Errors;
 using System.Diagnostics;
 
@@ -10,10 +9,10 @@ namespace Senswave.Infrastructure.Grpc.Interceptors;
 /// <summary>
 /// Translates <see cref="SenswaveRpcException"/> into gRPC statuses and acts as the gRPC equivalent of
 /// <c>GlobalExceptionHandlerMiddleware</c>: exceptions thrown inside a gRPC service never reach ASP.NET Core's exception handler.
+/// Error tags go on the ASP.NET Core server span (<see cref="Activity.Current"/>) instead of a separate span,
+/// so a gRPC call produces the same span count as a REST request.
 /// </summary>
-public sealed class ErrorHandlingInterceptor(
-    ILogger<ErrorHandlingInterceptor> logger,
-    GrpcActivityProvider activityProvider) : Interceptor
+public sealed class ErrorHandlingInterceptor(ILogger<ErrorHandlingInterceptor> logger) : Interceptor
 {
     public const string ErrorTypeTag = "senswave.error_type";
     public const string StatusCodeTag = "rpc.grpc.status_code";
@@ -23,15 +22,13 @@ public sealed class ErrorHandlingInterceptor(
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
-        using var activity = activityProvider.StartActivity(context.Method);
-
         try
         {
             return await continuation(request, context);
         }
         catch (Exception exception) when (exception is not RpcException && !IsClientCancellation(exception, context))
         {
-            throw Translate(exception, activity);
+            throw Translate(exception);
         }
     }
 
@@ -41,21 +38,20 @@ public sealed class ErrorHandlingInterceptor(
         ServerCallContext context,
         ServerStreamingServerMethod<TRequest, TResponse> continuation)
     {
-        using var activity = activityProvider.StartActivity(context.Method);
-
         try
         {
             await continuation(request, responseStream, context);
         }
         catch (Exception exception) when (exception is not RpcException && !IsClientCancellation(exception, context))
         {
-            throw Translate(exception, activity);
+            throw Translate(exception);
         }
     }
 
-    private RpcException Translate(Exception exception, Activity? activity)
+    private RpcException Translate(Exception exception)
     {
-        var traceId = Activity.Current?.Id;
+        var activity = Activity.Current;
+        var traceId = activity?.Id;
 
         if (exception is SenswaveRpcException senswaveException)
         {
