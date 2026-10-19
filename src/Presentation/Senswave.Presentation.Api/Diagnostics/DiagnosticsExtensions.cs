@@ -9,7 +9,6 @@ using Senswave.Abstractions.Transport;
 using Senswave.DataSources.Api;
 using Senswave.Infrastructure;
 using Senswave.Infrastructure.Diagnostics.OpenTelemetry;
-using Senswave.Infrastructure.Grpc;
 using Senswave.Infrastructure.Web.Diagnostics;
 using Senswave.Infrastructure.Web.Diagnostics.Health;
 using Senswave.LiveUpdates.Api;
@@ -45,7 +44,6 @@ public static class DiagnosticsExtensions
                 .AddSource(LiveUpdatesModule.DefaultListenerName)
                 .AddSource(UsersModule.DefaultListenerName)
                 .AddSource(DiagnosticHeaders.DefaultListenerName)
-                .AddSource(GrpcInfrastructureExtensions.DefaultListenerName)
                 .AddSource(Telemetry.SmtpClient.ActivitySourceName)
                 .AddAspNetCoreInstrumentation(x =>
                 {
