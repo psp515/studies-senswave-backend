@@ -16,4 +16,10 @@ public class OpenTelemetryOptions
     /// How often aggregated metrics are exported, in seconds. Every request is counted regardless; this only sets the time resolution.
     /// </summary>
     public int MetricExportIntervalSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Explicit bucket boundaries, in seconds, for <c>http.server.request.duration</c>. Empty keeps the framework default.
+    /// Finer buckets give p95/p99 real resolution in the low-millisecond range.
+    /// </summary>
+    public double[] LatencyHistogramBoundaries { get; set; } = [];
 }
