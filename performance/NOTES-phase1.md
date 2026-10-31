@@ -74,3 +74,25 @@ k6 via `grafana/k6:1.3.0` (repo mounted read-only at `/repo`, `-w /repo/performa
 - MODE=run sanity (RATE=50, DURATION=10s, `--summary-export` writes the JSON): s5 grpcweb and s5 grpc 100% checks, 500 iterations at 50/s.
 - The very first run after an activation is slow (s5 grpc: avg 2.2 s, 141 dropped iterations; second run: avg 101 ms; third: 34 ms) = JIT / connection cold start,
   which is why a 30 s warm-up precedes each measurement.
+
+## 7. PerfStream S6a / S6b (Task 10)
+
+Device message format confirmed end-to-end: S6a publishes `{"working":true|false}` to `perf/controller/{n}` (n = user number) on the plain 1883 listener
+(anonymous allowed); the API's broker client picks it up and the Pico tile value changes, producing one device-tile live update per message.
+Prerequisite as in section 3: the broker client of every user must be started (`StartBrokerClient`) after each activation.
+`Percentiles.Of` rank fixed to `Math.Ceiling(p * n / 100.0)` (p=7, n=100 returned 8 with `p / 100.0 * n`); unit test added.
+
+Verify runs (RATE=100, DURATION=5s, WARMUP=0, 100 subscribers, fresh run-data.json per activation, first run after activation = cold):
+
+| Transport | Scenario | Published | Delivered | Lost | Unmatched | p50 ms | p99 ms |
+|---|---|---|---|---|---|---|---|
+| Rest | S6a | 500 | 500 | 0 | 0 | 402 | 796 |
+| Rest | S6b | 500 | 500 | 0 | 0 | 723 | 1230 |
+| Grpc | S6a | 500 | 500 | 0 | 0 | 698 | 997 |
+| Grpc | S6b | 500 | 500 | 0 | 0 | 1608 | 2163 |
+| GrpcWeb | S6a | 500 | 500 | 0 | 0 | 1524 | 1883 |
+| GrpcWeb | S6b | 500 | 500 | 0 | 0 | 1028 | 1510 |
+
+No publish failures, no ended subscriptions, no publishBehind. Latencies are high and vary strongly because these are single cold 5 s runs right after an
+activation (JIT/connection warm-up, see section 6), not measurements.
+Step 6: SignalR (Rest) ran over HTTP/2 WebSockets, no HTTP/1.1 fallback needed.

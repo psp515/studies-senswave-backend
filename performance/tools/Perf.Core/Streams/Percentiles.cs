@@ -9,6 +9,6 @@ public static class Percentiles
 
         var sorted = values.Order().ToArray();
 
-        return ps.Select(p => sorted[Math.Clamp((int)Math.Ceiling(p / 100.0 * sorted.Length) - 1, 0, sorted.Length - 1)]).ToArray();
+        return ps.Select(p => sorted[Math.Clamp((int)Math.Ceiling(p * sorted.Length / 100.0) - 1, 0, sorted.Length - 1)]).ToArray();
     }
 }

@@ -51,5 +51,6 @@ public class DeliveryTrackerTests
         var values = Enumerable.Range(1, 100).Select(i => (double)i).ToArray();
 
         Assert.Equal(new[] { 50.0, 95.0, 99.0, 100.0 }, Percentiles.Of(values, 50, 95, 99, 100));
+        Assert.Equal(new[] { 7.0 }, Percentiles.Of(values, 7));                 // p/100*n overshoots to 8 in floating point
     }
 }

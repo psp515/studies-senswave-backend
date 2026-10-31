@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perf.Client", "Perf.Client\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfRunner", "PerfRunner\PerfRunner.csproj", "{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfStream", "PerfStream\PerfStream.csproj", "{7B04255F-BB10-46E1-8135-A8129E5AE9AE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x64.Build.0 = Release|Any CPU
 		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x86.ActiveCfg = Release|Any CPU
 		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x86.Build.0 = Release|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Debug|x64.Build.0 = Debug|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Debug|x86.Build.0 = Debug|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Release|x64.ActiveCfg = Release|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Release|x64.Build.0 = Release|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Release|x86.ActiveCfg = Release|Any CPU
+		{7B04255F-BB10-46E1-8135-A8129E5AE9AE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
