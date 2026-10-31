@@ -104,22 +104,9 @@ internal sealed class GrpcApiClient : IApiClient
             throw;
         }
 
-        var reader = Task.Run(async () =>
-        {
-            try
-            {
-                while (await call.ResponseStream.MoveNext(lifetime.Token))
-                {
-                    var update = call.ResponseStream.Current;
-                    if (update.UpdateCase == LiveUpdate.UpdateOneofCase.DeviceTile)
-                        onDeviceUpdate(update.DeviceTile.DeviceId);
-                }
-            }
-            catch (RpcException) when (lifetime.IsCancellationRequested) { }
-            catch (OperationCanceledException) { }
-        });
-
-        return new Subscription(call, lifetime, reader);
+        var subscription = new Subscription(call, lifetime);
+        subscription.Start(onDeviceUpdate);
+        return subscription;
     }
 
     public ValueTask DisposeAsync()
@@ -128,14 +115,60 @@ internal sealed class GrpcApiClient : IApiClient
         return ValueTask.CompletedTask;
     }
 
-    private sealed class Subscription(AsyncServerStreamingCall<LiveUpdate> call, CancellationTokenSource lifetime, Task reader) : ILiveUpdateSubscription
+    private sealed class Subscription(AsyncServerStreamingCall<LiveUpdate> call, CancellationTokenSource lifetime) : ILiveUpdateSubscription
     {
+        private Task _reader = Task.CompletedTask;
+        private volatile bool _ended;
+
+        public bool Ended => _ended;
+
+        public void Start(Action<string> onDeviceUpdate) => _reader = Task.Run(async () =>
+        {
+            try
+            {
+                while (await call.ResponseStream.MoveNext(lifetime.Token))
+                {
+                    var update = call.ResponseStream.Current;
+                    if (update.UpdateCase != LiveUpdate.UpdateOneofCase.DeviceTile)
+                        continue;
+
+                    try
+                    {
+                        onDeviceUpdate(update.DeviceTile.DeviceId);
+                    }
+                    catch
+                    {
+                        // a throwing callback must not kill the reader
+                    }
+                }
+            }
+            catch
+            {
+                // stream fault or cancellation: reflected in Ended below
+            }
+            finally
+            {
+                if (!lifetime.IsCancellationRequested)
+                    _ended = true;
+            }
+        });
+
         public async ValueTask DisposeAsync()
         {
-            await lifetime.CancelAsync();
-            await reader;
-            call.Dispose();
-            lifetime.Dispose();
+            try
+            {
+                await lifetime.CancelAsync();
+                await _reader;
+            }
+            catch
+            {
+                // teardown must never throw
+            }
+            finally
+            {
+                call.Dispose();
+                lifetime.Dispose();
+            }
         }
     }
 }

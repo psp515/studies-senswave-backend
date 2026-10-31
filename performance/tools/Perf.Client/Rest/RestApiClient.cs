@@ -97,6 +97,13 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
             })
             .Build();
 
+        var subscription = new Subscription(connection);
+        connection.Closed += _ =>
+        {
+            subscription.MarkClosed();
+            return Task.CompletedTask;
+        };
+
         var initialized = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         connection.On("Initialized", () => initialized.TrySetResult());
         connection.On<string>("FailedToInitialize", reason => initialized.TrySetException(new InvalidOperationException(reason)));
@@ -118,7 +125,7 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
             throw;
         }
 
-        return new Subscription(connection);
+        return subscription;
     }
 
     private async Task<JsonObject> Get(string path, string accessToken, CancellationToken ct)
@@ -139,6 +146,28 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
 
     private sealed class Subscription(HubConnection connection) : ILiveUpdateSubscription
     {
-        public ValueTask DisposeAsync() => connection.DisposeAsync();
+        private volatile bool _disposing;
+        private volatile bool _ended;
+
+        public bool Ended => _ended;
+
+        public void MarkClosed()
+        {
+            if (!_disposing)
+                _ended = true;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            _disposing = true;
+            try
+            {
+                await connection.DisposeAsync();
+            }
+            catch
+            {
+                // teardown must never throw
+            }
+        }
     }
 }

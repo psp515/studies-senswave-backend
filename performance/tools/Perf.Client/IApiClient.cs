@@ -2,7 +2,11 @@ using Perf.Core.Runs;
 
 namespace Perf.Client;
 
-public interface ILiveUpdateSubscription : IAsyncDisposable { }
+public interface ILiveUpdateSubscription : IAsyncDisposable
+{
+    /// <summary>True once the stream/connection ended for any reason other than our own dispose (server drop, fault).</summary>
+    bool Ended { get; }
+}
 
 public interface IApiClient : IAsyncDisposable
 {
