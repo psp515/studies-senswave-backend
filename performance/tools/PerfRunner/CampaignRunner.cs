@@ -72,24 +72,49 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
             measureStart = result.MeasureStartUtc ?? measureStart;
             measureEnd = result.MeasureEndUtc ?? DateTimeOffset.UtcNow;
 
-            var gates = Gates.Evaluate(new RunMetrics(result.Dropped, result.ErrorRate, cpu.Average));
+            if (!result.Success)
+                return await Finish(runDir, Meta("failed", ["measured run failed", Trim(result.Output)]), run, started, ct);
+
+            var gates = Gates.Evaluate(new RunMetrics(result.Dropped, result.ErrorRate, cpu.AverageBetween(measureStart.Value, measureEnd.Value)));
             return await Finish(runDir, Meta(gates.Passed ? "valid" : "invalid", gates.Failures), run, started, ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            await Finish(runDir, Meta("cancelled", ["cancelled by user"]), run, started, CancellationToken.None, fetchLogs: false);
+            throw;
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             return await Finish(runDir, Meta("failed", [ex.Message]), run, started, ct);
         }
     }
 
-    private async Task<RunMeta> Finish(string runDir, RunMeta meta, RunSpec run, DateTimeOffset started, CancellationToken ct)
+    private async Task<RunMeta> Finish(string runDir, RunMeta meta, RunSpec run, DateTimeOffset started, CancellationToken ct, bool fetchLogs = true)
     {
         await ResultsWriter.Json(Path.Combine(runDir, "meta.json"), meta, ct);
-        if (meta.Status != "valid")
+        await BlankTokens(Path.Combine(runDir, "run-data.json"), ct);
+        if (fetchLogs && meta.Status != "valid")
         {
             try { await File.WriteAllTextAsync(Path.Combine(runDir, "agent-logs.txt"), await agent.Logs(run.Transport, started, ct), ct); }
             catch (Exception ex) { await File.WriteAllTextAsync(Path.Combine(runDir, "agent-logs.txt"), $"could not fetch logs: {ex.Message}", ct); }
         }
         return meta;
+    }
+
+    /// <summary>Results and archives must not carry access tokens, so they are blanked once the attempt is over.</summary>
+    private static async Task BlankTokens(string dataFile, CancellationToken ct)
+    {
+        if (!File.Exists(dataFile))
+            return;
+        try
+        {
+            var data = System.Text.Json.JsonSerializer.Deserialize<RunData>(await File.ReadAllTextAsync(dataFile, ct), PerfJson.Options)!;
+            await ResultsWriter.Json(dataFile, new RunData(data.Users.Select(u => u with { AccessToken = "" }).ToList()), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Console.Error.WriteLine($"warning: could not blank tokens in {dataFile}: {ex.Message}");
+        }
     }
 
     private static string Trim(string output) => output.Length > 4000 ? output[^4000..] : output;

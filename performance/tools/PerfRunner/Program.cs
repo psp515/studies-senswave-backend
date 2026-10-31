@@ -18,9 +18,19 @@ switch (args[0])
     {
         var campaign = CampaignLoader.Parse(await File.ReadAllTextAsync(args[1]));
         using var agent = new AgentClient(campaign.Target, settings.AgentToken);
-        var dir = await new CampaignRunner(settings, agent, new K6Tool(settings), new StreamTool(settings)).Run(args[1], cts.Token);
-        Console.WriteLine($"Done: {dir}");
-        return 0;
+        try
+        {
+            var dir = await new CampaignRunner(settings, agent, new K6Tool(settings), new StreamTool(settings)).Run(args[1], cts.Token);
+            Console.WriteLine($"Done: {dir}");
+            return 0;
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            Console.Error.WriteLine("Cancelled: stopping the API under test.");
+            try { await agent.Stop(CancellationToken.None); }
+            catch (Exception ex) { Console.Error.WriteLine($"Could not stop the agent: {ex.Message}"); }
+            return 130;
+        }
     }
     case "prepare":
     {

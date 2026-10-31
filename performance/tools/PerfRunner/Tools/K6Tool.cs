@@ -54,7 +54,7 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
         {
             var stdout = process.StandardOutput.ReadToEndAsync(ct);
             var stderr = process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            await K6Tool.WaitOrKill(process, ct);
             var output = await stdout + await stderr;
 
             if (!File.Exists(summary))
@@ -62,6 +62,19 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
 
             var (dropped, errorRate) = K6Summary.Read(await File.ReadAllTextAsync(summary, ct));
             return new RunToolResult(process.ExitCode == 0 || mode == "run", dropped, errorRate, output);
+        }
+    }
+
+    internal static async Task WaitOrKill(Process process, CancellationToken ct)
+    {
+        try
+        {
+            await process.WaitForExitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            throw;
         }
     }
 

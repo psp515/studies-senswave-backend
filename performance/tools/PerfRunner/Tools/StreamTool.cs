@@ -39,7 +39,7 @@ public sealed class StreamTool(RunnerSettings settings) : IRunTool
         {
             var stdout = process.StandardOutput.ReadToEndAsync(ct);
             var stderr = process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
+            await K6Tool.WaitOrKill(process, ct);
             var output = await stdout + await stderr;
 
             if (!File.Exists(summary))
