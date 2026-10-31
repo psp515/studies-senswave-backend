@@ -40,12 +40,31 @@ internal sealed class GrpcApiClient : IApiClient
         if (!home.HasDataSourceId)
             throw new InvalidOperationException($"Home {homeId} has no data source.");
 
+        var dataSources = new DataSourcesService.DataSourcesServiceClient(_channel);
         try
         {
-            await new DataSourcesService.DataSourcesServiceClient(_channel).StartClientAsync(
+            await dataSources.StartClientAsync(
                 new StartClientRequest { BrokerId = home.DataSourceId, Username = username, Password = password }, Auth(accessToken), cancellationToken: ct);
         }
-        catch (RpcException e) when (e.Status.Detail.Contains(Rest.RestApiClient.ConnectionAlreadyExists, StringComparison.Ordinal)) { }
+        catch (RpcException e) when (e.StatusCode == StatusCode.Internal)
+        {
+            if (!await ClientIsRunning(dataSources, home.DataSourceId, accessToken, ct))
+                throw;
+        }
+    }
+
+    /// <summary>An already started client is reported as a generic Internal error ("Server Error"), so the state is checked instead.</summary>
+    private static async Task<bool> ClientIsRunning(DataSourcesService.DataSourcesServiceClient dataSources, string brokerId, string accessToken, CancellationToken ct)
+    {
+        try
+        {
+            await dataSources.GetClientStateAsync(new GetClientStateRequest { BrokerId = brokerId }, Auth(accessToken), cancellationToken: ct);
+            return true;
+        }
+        catch (RpcException)
+        {
+            return false;
+        }
     }
 
     public async Task<UserData> Discover(string email, string accessToken, CancellationToken ct)

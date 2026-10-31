@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.WebSockets;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.Connections;
@@ -11,12 +12,14 @@ namespace Perf.Client.Rest;
 internal sealed class RestApiClient(ApiTarget target) : IApiClient
 {
     internal const string PicoDeviceName = "Pico Controller";
-    internal const string ConnectionAlreadyExists = "ConnectionAlreadyExists";
+    /// <summary>StartClientErrors.ClientIsRunning: the client of this broker is already started (500 ServerFail).</summary>
+    internal const string ClientIsRunning = "ClientIsRunning";
 
     /// <summary>SignalR update type of a device tile change (DevicesUpdateService.DeviceTileUpdateType).</summary>
     private const string DeviceTileUpdateType = "deviceTileActionUpdate";
 
     private readonly HttpClient _http = HttpHandlers.Http2Client(target);
+    private readonly HttpMessageInvoker _webSocketInvoker = new(HttpHandlers.Create(target));
 
     public async Task<string> Login(string email, string password, CancellationToken ct)
     {
@@ -42,7 +45,7 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
             return;
 
         var body = await response.Content.ReadAsStringAsync(ct);
-        if (!body.Contains(ConnectionAlreadyExists, StringComparison.Ordinal))
+        if (!body.Contains(ClientIsRunning, StringComparison.Ordinal))
             throw new HttpRequestException($"Starting broker client failed: {(int)response.StatusCode} {body}");
     }
 
@@ -73,13 +76,23 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
                 options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
                 options.Transports = HttpTransportType.WebSockets;
                 options.SkipNegotiation = true;
-                options.HttpMessageHandlerFactory = _ => HttpHandlers.Create(target);
-                options.WebSocketConfiguration = ws =>
+                options.WebSocketFactory = async (context, token) =>
                 {
-                    ws.HttpVersion = System.Net.HttpVersion.Version20;
-                    ws.HttpVersionPolicy = HttpVersionPolicy.RequestVersionExact;
-                    if (target.InsecureTls)
-                        ws.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                    // The default factory cannot do WebSockets over HTTP/2: ConnectAsync needs an HttpMessageInvoker.
+                    var socket = new ClientWebSocket();
+                    socket.Options.HttpVersion = System.Net.HttpVersion.Version20;
+                    socket.Options.HttpVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+                    socket.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+                    try
+                    {
+                        await socket.ConnectAsync(context.Uri, _webSocketInvoker, token);
+                    }
+                    catch
+                    {
+                        socket.Dispose();
+                        throw;
+                    }
+                    return socket;
                 };
             })
             .Build();
@@ -120,6 +133,7 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
     public ValueTask DisposeAsync()
     {
         _http.Dispose();
+        _webSocketInvoker.Dispose();
         return ValueTask.CompletedTask;
     }
 

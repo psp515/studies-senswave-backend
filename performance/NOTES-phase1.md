@@ -48,6 +48,19 @@ Activated `Rest` (otel false).
 
 Deferred to Task 10 Step 6.
 
+## 5. Perf.Client check against the local stack (Task 7)
+
+Throwaway console (not committed): Login -> StartBrokerClient("perf","perf") -> Discover -> Subscribe -> TileAction(true) as user1@gmail.com, `https://localhost:8443`, InsecureTls.
+- Rest: device-tile update received after ~505 ms, exactly 1 delivery. Grpc: ~730 ms, 1 delivery. GrpcWeb: ~669 ms, 1 delivery (first call after activation, includes JIT).
+- Only device-tile updates are forwarded (gRPC `DeviceTile`, SignalR updateType `deviceTileActionUpdate`, payload key `deviceId`); the Pico state operation also yields a widget update that is ignored.
+- SignalR over HTTP/2 WebSockets WORKS, but needs two things the SignalR client does not do by default:
+  1. `ClientWebSocket.ConnectAsync` over HTTP/2 throws `ArgumentException: An HttpMessageInvoker instance must be passed to ConnectAsync when using HTTP/2`
+     with the default factory -> `HttpConnectionOptions.WebSocketFactory` creates the socket (HttpVersion 2.0, RequestVersionExact) and connects with an `HttpMessageInvoker` over `SocketsHttpHandler`.
+  2. With `SkipNegotiation` and the custom factory the token is not sent -> 401; the factory sets `Authorization: Bearer` itself. No HTTP/1.1 fallback needed (Task 10).
+- StartBrokerClient called twice: the second call returns 500 `ClientIsRunning` ("First stop client.", Error.ServerError) over REST, treated as success.
+  Over gRPC/gRPC-Web the same error arrives only as `Internal` / "Server Error" (no code), so the client then checks `GetClientState` and treats success as "already running".
+- Nuget warning NU1903 (SignalR.Common 10.0.7 advisory) comes from the centrally pinned version; not changed (no version bumps).
+
 ## End state
 
 Template created; API containers stopped; `Senswave.Perf.Database`, `Senswave.Perf.Mqtt`, `Senswave.Perf.Agent` running.
