@@ -12,16 +12,23 @@ public static class Archiver
         File.Delete(zip);
         ZipFile.CreateFromDirectory(campaignDir, zip, CompressionLevel.Optimal, includeBaseDirectory: true);
 
-        var url = BlobUrl.Build(new Uri(containerSasUrl), Path.GetFileName(zip));
-        using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
-        await using var file = File.OpenRead(zip);
-        using var request = new HttpRequestMessage(HttpMethod.Put, url) { Content = new StreamContent(file) };
-        request.Headers.Add("x-ms-blob-type", "BlockBlob");
-        request.Headers.Add("x-ms-version", "2021-08-06");
-        var response = await http.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Blob upload {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(ct)}");
+        try
+        {
+            var url = BlobUrl.Build(new Uri(containerSasUrl), Path.GetFileName(zip));
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+            await using var file = File.OpenRead(zip);
+            using var request = new HttpRequestMessage(HttpMethod.Put, url) { Content = new StreamContent(file) };
+            request.Headers.Add("x-ms-blob-type", "BlockBlob");
+            request.Headers.Add("x-ms-version", "2021-08-06");
+            using var response = await http.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Blob upload {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(ct)}");
 
-        return new Uri(url.GetLeftPart(UriPartial.Path));
+            return new Uri(url.GetLeftPart(UriPartial.Path));
+        }
+        finally
+        {
+            File.Delete(zip);
+        }
     }
 }
