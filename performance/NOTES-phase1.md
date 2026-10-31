@@ -96,3 +96,25 @@ Verify runs (RATE=100, DURATION=5s, WARMUP=0, 100 subscribers, fresh run-data.js
 No publish failures, no ended subscriptions, no publishBehind. Latencies are high and vary strongly because these are single cold 5 s runs right after an
 activation (JIT/connection warm-up, see section 6), not measurements.
 Step 6: SignalR (Rest) ran over HTTP/2 WebSockets, no HTTP/1.1 fallback needed.
+
+## 8. Alloy, dashboard, export (Task 11)
+
+No Grafana Cloud credentials were available, so the live check (plan Step 6) was NOT done. Local check with placeholder values only
+(`https://example.invalid` endpoints, dummy user/token, `docker run` of `grafana/alloy:v1.10.0` with the compose settings):
+- `sys.env(...)` is accepted by Alloy v1.10.0; the config loads and all 11 components report `healthy` (OTLP receiver on 4317/4318, transform, batch,
+  auth, otlphttp exporter, cadvisor + unix exporters, both scrapes, relabel, remote_write). Export errors to `example.invalid` are the only warnings.
+- unix exporter starts on Docker Desktop (one `diskstats` error: `/run/udev/data` missing, harmless).
+- cAdvisor exporter starts on Docker Desktop but exposes only the root cgroup (`id="/"`); no per-container series and no `name` label, so
+  `container_*{name="Senswave.Perf.*"}` queries (cpu/memory/network export and dashboard panels 5-7) return nothing locally. The Azure VM is the reference.
+- The Alloy container was stopped and removed afterwards.
+
+Still UNVERIFIED until the first run with real credentials: the metric names used in `ExportQueries.For` and the dashboard, and promotion of `run_id` /
+`transport` onto data points. Commands to run (with `GRAFANA_PROM_URL` = query base ending in `/api/prom`; activate `Grpc` with `runId` `names-check`,
+send a few requests with k6 verify `s1.js`, wait 60 s):
+```bash
+curl -s -u "$GRAFANA_PROM_USER:$GRAFANA_READ_TOKEN" "$GRAFANA_PROM_URL/api/v1/label/__name__/values" | tr ',' '\n' | grep -E "http_server_request_duration|process_cpu|dotnet_gc|dotnet_thread_pool|kestrel|container_cpu|container_memory_working|container_network"
+curl -s -u "$GRAFANA_PROM_USER:$GRAFANA_READ_TOKEN" "$GRAFANA_PROM_URL/api/v1/query" --data-urlencode 'query=count by (run_id, transport) (http_server_request_duration_seconds_count{run_id="names-check"})'
+```
+Expected: every family used in `Perf.Core/Export/ExportQueries.cs` is listed (fix differing names there and in its test) and the second query returns a
+series with `run_id="names-check"` and `transport="Grpc"` (the transport label depends on the `senswave.transport` resource attribute reaching Alloy).
+Also added to the export: `sum by (http_response_status_code) (rate(...count[30s]))` in `throughput.csv`, because ASP.NET sets `error_type` only for exceptions.

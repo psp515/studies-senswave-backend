@@ -17,7 +17,7 @@ public static class ExportQueries
     {
         var run = $"run_id=\"{meta.RunId}\"";
         var container = $"name=\"{ContainerName(meta.Transport)}\"";
-        var window = (int)(meta.MeasureEndUtc!.Value - meta.MeasureStartUtc!.Value).TotalSeconds;
+        var window = meta.MeasureStartUtc is { } start && meta.MeasureEndUtc is { } end ? (int)(end - start).TotalSeconds : 0;
 
         var list = new List<ExportQuery>();
 
@@ -27,6 +27,7 @@ public static class ExportQueries
 
         list.Add(new("throughput.csv", true, $"sum(rate(http_server_request_duration_seconds_count{{{run}}}[30s]))"));
         list.Add(new("throughput.csv", true, $"sum by (error_type) (rate(http_server_request_duration_seconds_count{{{run},error_type!=\"\"}}[30s]))"));
+        list.Add(new("throughput.csv", true, $"sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count{{{run}}}[30s]))"));
         list.Add(new("cpu.csv", true, $"rate(container_cpu_usage_seconds_total{{{container}}}[30s])"));
         list.Add(new("cpu.csv", true, $"rate(process_cpu_time_seconds_total{{{run}}}[30s])"));
         list.Add(new("memory.csv", true, $"container_memory_working_set_bytes{{{container}}}"));

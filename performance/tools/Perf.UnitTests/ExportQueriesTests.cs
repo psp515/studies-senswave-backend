@@ -34,4 +34,20 @@ public class ExportQueriesTests
         Assert.True(cpu.Range);
         Assert.Contains("name=\"Senswave.Perf.Grpc\"", cpu.PromQl);
     }
+
+    [Fact]
+    public void ThroughputIncludesStatusCodeBreakdown()
+    {
+        var throughput = ExportQueries.For(Meta()).Where(q => q.File == "throughput.csv").ToList();
+
+        Assert.Contains(throughput, q => q.PromQl.Contains("sum by (http_response_status_code)") && q.PromQl.Contains("run_id=\"r1-grpc-s1-100-otel\""));
+    }
+
+    [Fact]
+    public void MetaWithoutMeasurementWindowDoesNotThrow()
+    {
+        var meta = Meta() with { MeasureStartUtc = null, MeasureEndUtc = null };
+
+        Assert.NotEmpty(ExportQueries.For(meta));
+    }
 }

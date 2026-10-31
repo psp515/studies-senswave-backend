@@ -149,6 +149,32 @@ services:
       Agent__Token: ${AGENT_TOKEN}
       Agent__PostgresAdmin: Host=${POSTGRES_HOST};Port=${POSTGRES_PORT:-5432};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Database=postgres;Include Error Detail=true
 
+  alloy:
+    image: grafana/alloy:v1.10.0
+    container_name: Senswave.Perf.Alloy
+    restart: unless-stopped
+    cpuset: ${SIDE_CPUSET:-0-1}
+    cpus: 1
+    mem_limit: 1g
+    memswap_limit: 1g
+    privileged: true            # cAdvisor needs cgroup and device access
+    networks: [ perf ]
+    command: [ "run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data" ]
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host/root:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    environment:
+      PERF_ENV: ${PERF_ENV:-local}
+      GRAFANA_CLOUD_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT}
+      GRAFANA_CLOUD_OTLP_USER: ${GRAFANA_CLOUD_OTLP_USER}
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER}
+      GRAFANA_CLOUD_WRITE_TOKEN: ${GRAFANA_CLOUD_WRITE_TOKEN}
+
 networks:
   perf:
     name: senswave-perf

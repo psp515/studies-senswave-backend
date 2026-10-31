@@ -1,0 +1,85 @@
+// Grafana Alloy on the VM (Spec E): app OTLP + container (cAdvisor) + host metrics to Grafana Cloud. No logs.
+
+otelcol.receiver.otlp "apps" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+  output {
+    metrics = [otelcol.processor.transform.promote.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Grafana Cloud keeps resource attributes on target_info only; copy run_id and transport onto every data point
+// so exports can filter by run.
+otelcol.processor.transform "promote" {
+  error_mode = "ignore"
+  metric_statements {
+    context    = "datapoint"
+    statements = [
+      `set(attributes["run_id"], resource.attributes["run_id"])`,
+      `set(attributes["transport"], resource.attributes["senswave.transport"])`,
+    ]
+  }
+  output { metrics = [otelcol.processor.batch.default.input] }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
+    traces  = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+otelcol.auth.basic "grafana_cloud" {
+  username = sys.env("GRAFANA_CLOUD_OTLP_USER")
+  password = sys.env("GRAFANA_CLOUD_WRITE_TOKEN")
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    auth     = otelcol.auth.basic.grafana_cloud.handler
+  }
+}
+
+prometheus.exporter.cadvisor "containers" {
+  docker_host      = "unix:///var/run/docker.sock"
+  docker_only      = true
+  storage_duration = "2m"
+}
+
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+prometheus.scrape "containers" {
+  targets         = prometheus.exporter.cadvisor.containers.targets
+  scrape_interval = "10s"
+  forward_to      = [prometheus.relabel.env.receiver]
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  scrape_interval = "10s"
+  forward_to      = [prometheus.relabel.env.receiver]
+}
+
+prometheus.relabel "env" {
+  rule {
+    target_label = "env"
+    replacement  = sys.env("PERF_ENV")
+  }
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROM_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROM_USER")
+      password = sys.env("GRAFANA_CLOUD_WRITE_TOKEN")
+    }
+  }
+}
