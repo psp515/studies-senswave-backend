@@ -49,13 +49,19 @@ public sealed class ActivationService(IDockerEngine docker, IDatabaseAdmin datab
             ["Diagnostics__OpenTelemetry__Enabled"] = "false",
             ["OTEL_RESOURCE_ATTRIBUTES"] = "run_id=prepare",
         }, ct);
-        await WaitHealthy(rest, ct);
-
-        var since = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        await docker.Start(_options.SeedContainer, ct);
-        var log = await WaitForSeed(since, ct);
-        await docker.Stop(_options.SeedContainer, ct);
-        await docker.Stop(rest, ct);
+        string log;
+        try
+        {
+            await WaitHealthy(rest, ct);
+            var since = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await docker.Start(_options.SeedContainer, ct);
+            log = await WaitForSeed(since, ct);
+        }
+        finally
+        {
+            await TryStop(_options.SeedContainer);
+            await TryStop(rest);
+        }
 
         if (log.Contains("Initial seed finished with"))
             throw new InvalidOperationException("Seed finished with errors; template not created. See seed log.\n" + Tail(log));
@@ -81,14 +87,42 @@ public sealed class ActivationService(IDockerEngine docker, IDatabaseAdmin datab
             await docker.Stop(name, ct);
     }
 
+    private async Task TryStop(string name)
+    {
+        try { await docker.Stop(name, CancellationToken.None); }
+        catch (Exception ex) { logger.LogWarning(ex, "Best-effort stop of {container} failed", name); }
+    }
+
     private async Task Recreate(string name, IReadOnlyDictionary<string, string> env, CancellationToken ct)
     {
         var inspect = await docker.Inspect(name, ct);
         var body = ContainerSpec.BuildCreateBody(inspect, env);
         logger.LogInformation("Recreating {container} with {overrides}", name, string.Join(", ", env.Keys));
         await docker.Remove(name, ct);
-        await docker.Create(name, body, ct);
-        await docker.Start(name, ct);
+        try
+        {
+            await docker.Create(name, body, ct);
+            await docker.Start(name, ct);
+        }
+        catch
+        {
+            await Restore(name, inspect);
+            throw;
+        }
+    }
+
+    /// <summary>Best-effort: puts the container back as it was so later activations still find it.</summary>
+    private async Task Restore(string name, JsonObject inspect)
+    {
+        try
+        {
+            try { await docker.Remove(name, CancellationToken.None); } catch { /* may not exist */ }
+            await docker.Create(name, ContainerSpec.BuildCreateBody(inspect, new Dictionary<string, string>()), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not restore container {container}", name);
+        }
     }
 
     private async Task WaitHealthy(string name, CancellationToken ct)
@@ -96,7 +130,11 @@ public sealed class ActivationService(IDockerEngine docker, IDatabaseAdmin datab
         var deadline = DateTime.UtcNow.AddSeconds(_options.HealthTimeoutSeconds);
         while (DateTime.UtcNow < deadline)
         {
-            var health = (await docker.Inspect(name, ct))["State"]?["Health"]?["Status"]?.GetValue<string>();
+            var state = (await docker.Inspect(name, ct))["State"];
+            var status = state?["Status"]?.GetValue<string>();
+            var health = state?["Health"]?["Status"]?.GetValue<string>();
+            if (status is "exited" or "dead")
+                throw new InvalidOperationException($"{name} exited before becoming healthy.");
             if (health == "healthy")
                 return;
             if (health == "unhealthy")
