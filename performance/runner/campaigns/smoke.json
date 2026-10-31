@@ -1,0 +1,12 @@
+{
+  "target": { "api": "https://host.docker.internal:8443", "agent": "https://host.docker.internal:9443", "insecureTls": true },
+  "rounds": 1,
+  "transports": ["Rest", "Grpc", "GrpcWeb"],
+  "scenarios": ["S1", "S2", "S3", "S4", "S5", "S6a", "S6b"],
+  "rates": [100],
+  "otel": [true],
+  "warmupSeconds": 10,
+  "durationSeconds": 30,
+  "users": { "emailPattern": "user{0}@gmail.com", "firstIndex": 1, "count": 100, "password": "User123456!" },
+  "export": { "traces": false, "rawK6": false }
+}

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfAgent", "PerfAgent\Perf
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perf.Client", "Perf.Client\Perf.Client.csproj", "{5DC0A6DA-87C8-4C6F-85A9-D6B9DB11FC92}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerfRunner", "PerfRunner\PerfRunner.csproj", "{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{5DC0A6DA-87C8-4C6F-85A9-D6B9DB11FC92}.Release|x64.Build.0 = Release|Any CPU
 		{5DC0A6DA-87C8-4C6F-85A9-D6B9DB11FC92}.Release|x86.ActiveCfg = Release|Any CPU
 		{5DC0A6DA-87C8-4C6F-85A9-D6B9DB11FC92}.Release|x86.Build.0 = Release|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Debug|x64.Build.0 = Debug|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Debug|x86.Build.0 = Debug|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x64.ActiveCfg = Release|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x64.Build.0 = Release|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x86.ActiveCfg = Release|Any CPU
+		{F4ADC9E1-DDC8-4F0F-BB51-6C25D52313EA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
