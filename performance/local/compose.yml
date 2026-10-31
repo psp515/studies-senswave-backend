@@ -30,9 +30,10 @@ services:
     container_name: Senswave.Perf.Mqtt
     cpuset: ${SIDE_CPUSET:-0-1}
     networks: [ perf ]
-    ports: [ "127.0.0.1:1883:1883" ]
+    ports: [ "127.0.0.1:1883:1883", "127.0.0.1:8883:8883" ]
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ${CERT_DIR:-../../docker/https}:/mosquitto/certs:ro
 
 volumes:
   perf-database-data:
