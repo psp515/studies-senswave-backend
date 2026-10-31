@@ -176,6 +176,8 @@ Notes for the local setup:
 
 Phase 2 of the platform. The VM hosts the stack, Flexible Server holds the databases, and the load side stays on your machine or a separate 2-vCPU box. Read [section 4](#4-practical-points-dont-forget) before creating anything.
 
+> **Untested commands.** The `az`, NSG and certbot commands below were written from documentation and were **not run end to end**. Check flags with `az <command> --help` before use. In particular check: (1) the **Standard** public IP together with `az vm create --zone`: the IP may need to be zonal or zone-redundant to match the VM; (2) `az postgres flexible-server create --vnet/--subnet`: it auto-creates a private DNS zone and delegates the subnet, so confirm the zone is linked to the VNet and that the server host resolves from the VM (`nslookup <server-name>.postgres.database.azure.com`).
+
 Examples use `westeurope`, resource group `rg-senswave-perf`, DNS name `perf.example.com`. Replace them.
 
 ### 3.1 Resource group and network
@@ -295,7 +297,7 @@ Set at least these values in `performance/stack/.env`:
 |---|---|
 | `PERF_API_HOST` | `perf.example.com` (the DNS name; also the in-network alias the seed uses) |
 | `PERF_ENV` | `azure` (Alloy label `env`) |
-| `GIT_SHA` | the commit under test: `GIT_SHA=$(git rev-parse HEAD)` (put the resolved value in the file, or export it before `up`) |
+| `GIT_SHA` | the commit under test; a `.env` file does not expand `$(...)`, so export it in the shell before `up --build` (see 3.9) |
 | `API_CERTIFICATE_PASSWORD` | the PFX password from 3.6 |
 | `SEED_SSL_CERT_FILE` | `/etc/ssl/certs/ca-certificates.crt` (seed trusts the Let's Encrypt chain through the system CAs) |
 | `API_SSL_CERT_FILE` | `/etc/ssl/certs/ca-certificates.crt` (broker certificate must be publicly trusted) |
@@ -319,6 +321,12 @@ lscpu -e
 Rows with the same `CORE` value are hyperthread siblings. Set `API_CPUSET` to a **full physical core pair** (both siblings of one or two cores) and `SIDE_CPUSET` to the rest, for example `API_CPUSET=2-3` and `SIDE_CPUSET=0-1` when `0,1` and `2,3` are the sibling pairs. If the siblings are interleaved (`0,2` and `1,3`), use `API_CPUSET=1,3`, `SIDE_CPUSET=0,2`.
 
 ### 3.9 Create and start
+
+Export the commit SHA first. It becomes the `senswave.git-sha` image label, which is **baked at build time**, so it must be set when `--build` runs (an exported variable overrides `.env`):
+
+```bash
+export GIT_SHA=$(git rev-parse HEAD)
+```
 
 Create every container without starting any (builds the API image from the checked-out commit):
 
@@ -561,6 +569,9 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 
 **Problem:** `Microsoft.AspNetCore.SignalR.Common` 10.0.7, pinned centrally, produces the NU1903 known-vulnerability warning in the tool projects.
 **Solution:** not bumped, because of the dependency policy (no incidental version changes). The warning is expected.
+
+**Problem:** the API's MQTT broker client throttles by default (`MilisecondSpanBetweenMessagesOnSameTopic: 100`, `MessageRateLimiter.TokenLimit: 150` per 60 s), which would cap S6 far below 1000 events/s across 100 devices.
+**Solution:** `stack/api/appsettings.Production.json` (mounted into every API container) sets `MilisecondSpanBetweenMessagesOnSameTopic` to `0` and `TokenLimit` to `100000`. It also turns off the ASP.NET rate limiter and SMTP, uses the in-memory bus, and sets trace sampling 0.01 and finer latency histogram boundaries.
 
 **Problem:** a pulled image tag may not exist.
 **Solution:** the images used are `postgres:17.6`, `eclipse-mosquitto:2.0.21`, `grafana/alloy:v1.10.0`, `grafana/k6:1.3.0`, `mcr.microsoft.com/dotnet/sdk:10.0` and `aspnet:10.0`. No tag had to be changed. The `certbot/dns-cloudflare` image in section 3.6 is a one-off tool outside the repository; use any current tag.
