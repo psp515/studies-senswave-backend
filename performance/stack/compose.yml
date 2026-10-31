@@ -1,0 +1,127 @@
+name: senswave-perf
+
+# VM stack (Spec E). Create everything once, start nothing:
+#   docker compose --profile seed up --no-start
+# PerfAgent then starts exactly one API container per run.
+
+x-api: &api
+  image: senswave-perf-api
+  build:
+    context: ../..
+    dockerfile: src/Presentation/Senswave.Presentation.Api/Dockerfile
+    args:
+      BUILD_CONFIGURATION: Release
+      BUILD_IMAGE_CONFIGURATION: release
+    labels:
+      senswave.git-sha: ${GIT_SHA:-unknown}
+  restart: "no"
+  cpuset: ${API_CPUSET:-2-3}
+  cpus: ${API_CPUS:-2}
+  mem_limit: ${API_MEMORY:-4g}
+  memswap_limit: ${API_MEMORY:-4g}
+  pids_limit: 512
+  ports:
+    - ${API_PORT:-8443}:8443
+  volumes:
+    - ${CERT_DIR:-../../docker/https}:/https:ro
+    - ./api/appsettings.Production.json:/app/appsettings.Production.json:ro
+  labels:
+    senswave.perf.role: api
+  healthcheck:
+    test: ["CMD-SHELL", "curl -s http://localhost:5001/api/health | grep -q '\"status\":\"Healthy\"'"]
+    interval: 2s
+    timeout: 2s
+    retries: 60
+    start_period: 5s
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_URLS: https://+:8443;http://+:5001
+  ASPNETCORE_Kestrel__Certificates__Default__Path: /https/senswave.api.pfx
+  ASPNETCORE_Kestrel__Certificates__Default__Password: ${API_CERTIFICATE_PASSWORD}
+  PostgreSql__Host: ${POSTGRES_HOST}
+  PostgreSql__Port: ${POSTGRES_PORT:-5432}
+  PostgreSql__Username: ${POSTGRES_USER}
+  PostgreSql__Password: ${POSTGRES_PASSWORD}
+  PostgreSql__Database: senswave_run
+  Diagnostics__OpenTelemetry__Enabled: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+  OTEL_RESOURCE_ATTRIBUTES: run_id=none,deployment.environment=${PERF_ENV:-local}
+
+services:
+  api-rest:
+    <<: *api
+    container_name: Senswave.Perf.Rest
+    networks:
+      perf:
+        aliases: [ "${PERF_API_HOST:-api}" ]
+    environment:
+      <<: *api-environment
+      Transport__Mode: Rest
+      OTEL_SERVICE_NAME: senswave-api-rest
+
+  api-grpc:
+    <<: *api
+    container_name: Senswave.Perf.Grpc
+    networks:
+      perf:
+        aliases: [ "${PERF_API_HOST:-api}" ]
+    environment:
+      <<: *api-environment
+      Transport__Mode: Grpc
+      OTEL_SERVICE_NAME: senswave-api-grpc
+
+  api-grpcweb:
+    <<: *api
+    container_name: Senswave.Perf.GrpcWeb
+    networks:
+      perf:
+        aliases: [ "${PERF_API_HOST:-api}" ]
+    environment:
+      <<: *api-environment
+      Transport__Mode: GrpcWeb
+      OTEL_SERVICE_NAME: senswave-api-grpcweb
+
+  seed:
+    image: senswave-perf-seed
+    build:
+      context: ../..
+      dockerfile: src/Presentation/Senswave.Presentation.Seed/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: Senswave.Perf.Seed
+    profiles: [ seed ]
+    restart: "no"
+    cpuset: ${SIDE_CPUSET:-0-1}
+    networks: [ perf ]
+    volumes:
+      - ${CERT_DIR:-../../docker/https}:/https:ro
+    environment:
+      SSL_CERT_FILE: ${SEED_SSL_CERT_FILE:-/https/senswave.api.crt}
+      PostgreSql__Host: ${POSTGRES_HOST}
+      PostgreSql__Port: ${POSTGRES_PORT:-5432}
+      PostgreSql__Username: ${POSTGRES_USER}
+      PostgreSql__Password: ${POSTGRES_PASSWORD}
+      PostgreSql__Database: senswave_seed
+      Seed__Instance: https://${PERF_API_HOST:-api}:8443/api
+      Seed__GeneratedUsers__Count: ${SEED_USER_COUNT:-100}
+      Seed__GeneratedUsers__EmailPattern: user{0}@gmail.com
+      Seed__GeneratedUsers__Password: User123456!
+      Seed__GeneratedUsers__Broker__Create: "true"
+      Seed__GeneratedUsers__Broker__Name: Shared Broker
+      Seed__GeneratedUsers__Broker__Url: ${SEED_BROKER_URL}
+      Seed__GeneratedUsers__Broker__Port: ${SEED_BROKER_PORT}
+      Seed__GeneratedUsers__Broker__Username: ${SEED_BROKER_USERNAME}
+      Seed__GeneratedUsers__Broker__Password: ${SEED_BROKER_PASSWORD}
+      Seed__GeneratedUsers__Devices__PicoController__GlobalTopic: perf/controller/{0}
+      Seed__DefaultUser__Broker__Url: ${SEED_BROKER_URL}
+      Seed__DefaultUser__Broker__Port: ${SEED_BROKER_PORT}
+      Seed__DefaultUser__Broker__Username: ${SEED_BROKER_USERNAME}
+      Seed__DefaultUser__Broker__Password: ${SEED_BROKER_PASSWORD}
+      Seed__DefaultUser__Devices__PicoController__GlobalTopic: perf/controller
+      # The static seed user list contains user1@gmail.com, which collides with generated user 1.
+      Seed__Users__1__Email: static.user1@gmail.com
+
+networks:
+  perf:
+    name: senswave-perf
