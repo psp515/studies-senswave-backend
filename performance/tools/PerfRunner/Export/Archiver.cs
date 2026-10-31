@@ -10,10 +10,10 @@ public static class Archiver
     {
         var zip = Path.Combine(Path.GetTempPath(), Path.GetFileName(campaignDir.TrimEnd('/', '\\')) + ".zip");
         File.Delete(zip);
-        ZipFile.CreateFromDirectory(campaignDir, zip, CompressionLevel.Optimal, includeBaseDirectory: true);
-
         try
         {
+            ZipFile.CreateFromDirectory(campaignDir, zip, CompressionLevel.Optimal, includeBaseDirectory: true);
+
             var url = BlobUrl.Build(new Uri(containerSasUrl), Path.GetFileName(zip));
             using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
             await using var file = File.OpenRead(zip);

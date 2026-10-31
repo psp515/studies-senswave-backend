@@ -23,7 +23,7 @@ switch (args[0])
             var dir = await new CampaignRunner(settings, agent, new K6Tool(settings), new StreamTool(settings)).Run(args[1], cts.Token);
             var exitCode = 0;
             try { await Export(settings, dir, campaign.Export.Traces, waitForIngestion: true, cts.Token); }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!cts.Token.IsCancellationRequested)
             {
                 Console.Error.WriteLine($"server export failed: {ex.Message}; re-run: perfrunner export {dir}");
                 exitCode = 3;
