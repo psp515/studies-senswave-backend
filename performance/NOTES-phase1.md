@@ -64,3 +64,13 @@ Throwaway console (not committed): Login -> StartBrokerClient("perf","perf") -> 
 ## End state
 
 Template created; API containers stopped; `Senswave.Perf.Database`, `Senswave.Perf.Mqtt`, `Senswave.Perf.Agent` running.
+
+## 6. k6 scenarios S1-S5 (Task 9)
+
+k6 via `grafana/k6:1.3.0` (repo mounted read-only at `/repo`, `-w /repo/performance/k6`, `--add-host host.docker.internal:host-gateway`,
+`BASE_URL=https://host.docker.internal:8443`). `run-data.json` generated per activation by a throwaway console (login, StartBrokerClient, Discover).
+- MODE=verify, s1..s5 x rest/grpc/grpcweb (15 runs): every run 100% checks (`ok`, `has body`), exit 0. Proto field names in the brief were correct (no changes).
+- S5 native gRPC: a plain JSON boolean for `google.protobuf.Value` is accepted, the `{ bool_value: ... }` fallback is not needed.
+- MODE=run sanity (RATE=50, DURATION=10s, `--summary-export` writes the JSON): s5 grpcweb and s5 grpc 100% checks, 500 iterations at 50/s.
+- The very first run after an activation is slow (s5 grpc: avg 2.2 s, 141 dropped iterations; second run: avg 101 ms; third: 34 ms) = JIT / connection cold start,
+  which is why a 30 s warm-up precedes each measurement.
