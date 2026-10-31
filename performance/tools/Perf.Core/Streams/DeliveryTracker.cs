@@ -26,6 +26,33 @@ public sealed class DeliveryTracker
         }
     }
 
+    /// <summary>Removes the pending publish stamped <paramref name="timestampTicks"/> for the device (its publish failed, so no delivery will come).</summary>
+    public void Retract(string deviceId, long timestampTicks)
+    {
+        lock (_lock)
+        {
+            if (!_pending.TryGetValue(deviceId, out var queue))
+                return;
+
+            var kept = new Queue<(long Ticks, bool Measured)>(queue.Count);
+            var removed = false;
+            foreach (var entry in queue)
+            {
+                if (!removed && entry.Ticks == timestampTicks)
+                {
+                    removed = true;
+                    if (entry.Measured)
+                        _published--;
+                    continue;
+                }
+
+                kept.Enqueue(entry);
+            }
+
+            _pending[deviceId] = kept;
+        }
+    }
+
     public bool Delivered(string deviceId, long timestampTicks)
     {
         lock (_lock)

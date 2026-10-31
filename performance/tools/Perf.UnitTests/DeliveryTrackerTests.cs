@@ -53,4 +53,32 @@ public class DeliveryTrackerTests
         Assert.Equal(new[] { 50.0, 95.0, 99.0, 100.0 }, Percentiles.Of(values, 50, 95, 99, 100));
         Assert.Equal(new[] { 7.0 }, Percentiles.Of(values, 7));                 // p/100*n overshoots to 8 in floating point
     }
+
+    [Fact]
+    public void RetractedPublishIsNeitherLostNorMatched()
+    {
+        var tracker = new DeliveryTracker();
+        tracker.Published("d", Ms(1), measured: true);
+        tracker.Published("d", Ms(2), measured: true);
+        tracker.Retract("d", Ms(1));                      // first publish failed
+
+        Assert.True(tracker.Delivered("d", Ms(12)));      // belongs to the publish at 2 ms
+        var result = tracker.Finish(Ms(10_000), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, result.Published);
+        Assert.Equal(1, result.Delivered);
+        Assert.Equal(0, result.Lost);
+        Assert.Equal(new[] { 10.0 }, result.LatenciesMs);
+    }
+
+    [Fact]
+    public void RetractOfUnknownPublishIsIgnored()
+    {
+        var tracker = new DeliveryTracker();
+        tracker.Published("d", Ms(1), measured: true);
+        tracker.Retract("d", Ms(99));
+        tracker.Retract("other", Ms(1));
+
+        Assert.Equal(1, tracker.Finish(Ms(10_000), TimeSpan.FromSeconds(5)).Lost);
+    }
 }

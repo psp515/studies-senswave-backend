@@ -50,55 +50,87 @@ long failures = 0, behind = 0;
 var inflight = new List<Task>();
 var start = Now();
 var measureStart = DateTimeOffset.UtcNow;
+var cancelled = false;
+var crashed = false;
+StreamResult result = new(0, 0, 0, 0, []);
+var measureEnd = measureStart;
 
 try
 {
-    for (long i = 0; i < total && !cts.IsCancellationRequested; i++)
+    try
     {
-        var due = start + TimeSpan.FromSeconds((double)i / s.Rate).Ticks;
-        var wait = due - Now();
-        if (wait > TimeSpan.TicksPerMillisecond)
-            await Task.Delay(TimeSpan.FromTicks(wait), cts.Token);
-        else if (wait < -TimeSpan.FromMilliseconds(100).Ticks)
-            behind++;
-
-        if (i == measuredFrom)
-            measureStart = DateTimeOffset.UtcNow;
-
-        var user = data.Users[(int)(i % data.Users.Count)];
-        tracker.Published(user.DeviceId, Now(), measured: i >= measuredFrom);
-        var sequence = i;
-        inflight.Add(Task.Run(async () =>
+        for (long i = 0; i < total && !cts.IsCancellationRequested; i++)
         {
-            try { await publisher.Publish(user, sequence, cts.Token); }
-            catch { Interlocked.Increment(ref failures); }
-        }));
-        if (inflight.Count > 2000)
-            inflight.RemoveAll(t => t.IsCompleted);
+            var due = start + TimeSpan.FromSeconds((double)i / s.Rate).Ticks;
+            var wait = due - Now();
+            if (wait > TimeSpan.TicksPerMillisecond)
+                await Task.Delay(TimeSpan.FromTicks(wait), cts.Token);
+            else if (wait < -TimeSpan.FromMilliseconds(100).Ticks)
+                behind++;
+
+            if (i == measuredFrom)
+                measureStart = DateTimeOffset.UtcNow;
+
+            var user = data.Users[(int)(i % data.Users.Count)];
+            var publishedAt = Now();
+            tracker.Published(user.DeviceId, publishedAt, measured: i >= measuredFrom);
+            var sequence = i;
+            inflight.Add(Task.Run(async () =>
+            {
+                try { await publisher.Publish(user, sequence, cts.Token); }
+                catch
+                {
+                    // A failed publish will never be delivered: drop it from the pending FIFO so later matches stay aligned.
+                    tracker.Retract(user.DeviceId, publishedAt);
+                    Interlocked.Increment(ref failures);
+                }
+            }));
+            if (i % 1000 == 0 && inflight.Count > 2000)
+                inflight.RemoveAll(t => t.IsCompleted);
+        }
+
+        measureEnd = DateTimeOffset.UtcNow;
+        await Task.WhenAll(inflight);
+        await Task.Delay(TimeSpan.FromSeconds(5), cts.Token);       // grace for in-flight deliveries
+    }
+    catch (OperationCanceledException)
+    {
+        cancelled = true;
+        measureEnd = DateTimeOffset.UtcNow;
+    }
+    catch (Exception ex)
+    {
+        crashed = true;
+        Console.Error.WriteLine($"run failed: {ex}");
+        measureEnd = DateTimeOffset.UtcNow;
+    }
+
+    result = tracker.Finish(Now(), TimeSpan.FromSeconds(5));
+    var ended = subscriptions.Count(x => x.Ended);
+
+    // NaN (nothing delivered) cannot be serialized: report 0.
+    static double Finite(double v) => double.IsFinite(v) ? v : 0;
+    var setupP = Percentiles.Of(setup.ToArray(), 50, 95, 100).Select(Finite).ToArray();
+    var latencyP = Percentiles.Of(result.LatenciesMs, 50, 90, 95, 99, 100).Select(Finite).ToArray();
+    var summary = new StreamSummary(s.Scenario.ToString(), s.Transport.ToString(), s.Rate, subscriptions.Count,
+        new Percentile3(setupP[0], setupP[1], setupP[2]),
+        result.Published, result.Delivered, result.Lost, result.Unmatched, failures, behind,
+        ended, measureStart, measureEnd,
+        new Percentile5(latencyP[0], latencyP[1], latencyP[2], latencyP[3], latencyP[4]));
+    var json = JsonSerializer.Serialize(summary, PerfJson.Options);
+    await File.WriteAllTextAsync(s.Out, json);
+    Console.WriteLine(json);
+}
+finally
+{
+    foreach (var subscription in subscriptions)
+    {
+        try { await subscription.DisposeAsync(); } catch { /* best effort */ }
     }
 }
-catch (OperationCanceledException)
-{
-    // cancelled: report what happened so far
-}
 
-var measureEnd = DateTimeOffset.UtcNow;
-await Task.WhenAll(inflight);
-await Task.Delay(TimeSpan.FromSeconds(5));           // grace for in-flight deliveries
-var result = tracker.Finish(Now(), TimeSpan.FromSeconds(5));
-
-var ended = subscriptions.Count(x => x.Ended);
-foreach (var subscription in subscriptions)
-    await subscription.DisposeAsync();
-
-var setupP = Percentiles.Of(setup.ToArray(), 50, 95, 100);
-var latencyP = Percentiles.Of(result.LatenciesMs, 50, 90, 95, 99, 100);
-var summary = new StreamSummary(s.Scenario.ToString(), s.Transport.ToString(), s.Rate, subscriptions.Count,
-    new Percentile3(setupP[0], setupP[1], setupP[2]),
-    result.Published, result.Delivered, result.Lost, result.Unmatched, failures, behind,
-    ended, measureStart, measureEnd,
-    new Percentile5(latencyP[0], latencyP[1], latencyP[2], latencyP[3], latencyP[4]));
-await File.WriteAllTextAsync(s.Out, JsonSerializer.Serialize(summary, PerfJson.Options));
-
-Console.WriteLine(JsonSerializer.Serialize(summary, PerfJson.Options));
+if (cancelled)
+    return 130;
+if (crashed)
+    return 1;
 return s.Mode == "verify" && result.Delivered < Math.Max(1, data.Users.Count / 10) ? 1 : 0;
