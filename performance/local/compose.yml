@@ -1,6 +1,8 @@
 # Local phase: the VM stack plus stand-ins for Azure Flexible Server and the external broker.
 #   docker compose -f performance/local/compose.yml --env-file performance/stack/.env --profile seed up --no-start
 #   docker compose -f performance/local/compose.yml --env-file performance/stack/.env up -d database mqtt
+name: senswave-perf
+
 include:
   - path: ../stack/compose.yml
     env_file: ../stack/.env
@@ -11,7 +13,7 @@ services:
     container_name: Senswave.Perf.Database
     cpuset: ${SIDE_CPUSET:-0-1}
     networks: [ perf ]
-    ports: [ "5432:5432" ]
+    ports: [ "127.0.0.1:5432:5432" ]
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -26,8 +28,9 @@ services:
   mqtt:
     image: eclipse-mosquitto:2.0.21
     container_name: Senswave.Perf.Mqtt
+    cpuset: ${SIDE_CPUSET:-0-1}
     networks: [ perf ]
-    ports: [ "1883:1883" ]
+    ports: [ "127.0.0.1:1883:1883" ]
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 

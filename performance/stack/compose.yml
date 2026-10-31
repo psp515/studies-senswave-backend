@@ -6,14 +6,6 @@ name: senswave-perf
 
 x-api: &api
   image: senswave-perf-api
-  build:
-    context: ../..
-    dockerfile: src/Presentation/Senswave.Presentation.Api/Dockerfile
-    args:
-      BUILD_CONFIGURATION: Release
-      BUILD_IMAGE_CONFIGURATION: release
-    labels:
-      senswave.git-sha: ${GIT_SHA:-unknown}
   restart: "no"
   cpuset: ${API_CPUSET:-2-3}
   cpus: ${API_CPUS:-2}
@@ -51,6 +43,14 @@ x-api-environment: &api-environment
 services:
   api-rest:
     <<: *api
+    build:
+      context: ../..
+      dockerfile: src/Presentation/Senswave.Presentation.Api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+        BUILD_IMAGE_CONFIGURATION: release
+      labels:
+        senswave.git-sha: ${GIT_SHA:-unknown}
     container_name: Senswave.Perf.Rest
     networks:
       perf:
@@ -121,6 +121,31 @@ services:
       Seed__DefaultUser__Devices__PicoController__GlobalTopic: perf/controller
       # The static seed user list contains user1@gmail.com, which collides with generated user 1.
       Seed__Users__1__Email: static.user1@gmail.com
+
+  perf-agent:
+    image: senswave-perf-agent
+    build:
+      context: ../..
+      dockerfile: performance/tools/PerfAgent/Dockerfile
+    container_name: Senswave.Perf.Agent
+    restart: unless-stopped
+    cpuset: ${SIDE_CPUSET:-0-1}
+    cpus: 0.25
+    mem_limit: 128m
+    memswap_limit: 128m
+    networks: [ perf ]
+    ports:
+      - ${AGENT_PORT:-9443}:9443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CERT_DIR:-../../docker/https}:/https:ro
+    environment:
+      ASPNETCORE_URLS: https://+:9443
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/senswave.api.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${API_CERTIFICATE_PASSWORD}
+      PERF_ENV: ${PERF_ENV:-local}
+      Agent__Token: ${AGENT_TOKEN}
+      Agent__PostgresAdmin: Host=${POSTGRES_HOST};Port=${POSTGRES_PORT:-5432};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Database=postgres;Include Error Detail=true
 
 networks:
   perf:

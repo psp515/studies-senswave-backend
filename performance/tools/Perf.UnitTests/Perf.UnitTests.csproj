@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Perf.Core\Perf.Core.csproj" />
+    <ProjectReference Include="..\PerfAgent\PerfAgent.csproj" />
   </ItemGroup>
 
 </Project>
