@@ -4,7 +4,7 @@ export const BASE_URL = (__ENV.BASE_URL || 'https://localhost:8443').replace(/\/
 export const MODE = (__ENV.MODE || 'run').toLowerCase();
 export const RATE = parseInt(__ENV.RATE || '100', 10);
 export const DURATION = __ENV.DURATION || '30s';
-export const DATA_FILE = __ENV.DATA_FILE || '../results/run-data.json';
+export const DATA_FILE = __ENV.DATA_FILE || '';
 export const INSECURE = (__ENV.INSECURE || 'false') === 'true';
 
 if (!['rest', 'grpc', 'grpcweb'].includes(TRANSPORT)) {
@@ -15,7 +15,7 @@ if (!['rest', 'grpc', 'grpcweb'].includes(TRANSPORT)) {
 export function options() {
     const base = {
         insecureSkipTLSVerify: INSECURE,
-        summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
+        summaryTrendStats: ['avg', 'min', 'p(50)', 'p(90)', 'p(95)', 'p(99)', 'max'],
         discardResponseBodies: false,
     };
 

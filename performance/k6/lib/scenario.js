@@ -17,7 +17,7 @@ export function run(op) {
         }
         case 'grpcweb': {
             const r = grpcWeb.call(BASE_URL, op.grpcWeb.path, op.grpcWeb.bytes, op.token);
-            return check(r, { ok: (x) => x.res.status === 200 && x.grpcStatus === '0', 'has body': (x) => x.data > 0 });
+            return check(r, { ok: (x) => x.res.status === 200 && !x.truncated && x.grpcStatus === '0', 'has body': (x) => x.data > 0 });
         }
     }
 }

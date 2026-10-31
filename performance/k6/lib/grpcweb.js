@@ -1,5 +1,4 @@
 import http from 'k6/http';
-import { fail } from 'k6';
 
 // One data frame: flag 0x00 + 4-byte big-endian length + message.
 export function frame(messageBytes) {
@@ -12,7 +11,7 @@ export function call(baseUrl, path, messageBytes, token) {
     if (token) headers.authorization = `Bearer ${token}`;
     const res = http.post(`${baseUrl}/${path}`, frame(messageBytes), { headers, responseType: 'binary' });
     const frames = res.status === 200 ? parseFrames(res.body) : { data: 0, status: null };
-    return { res, data: frames.data, grpcStatus: frames.status ?? res.headers['Grpc-Status'] ?? null };
+    return { res, data: frames.data, truncated: !!frames.truncated, grpcStatus: frames.status ?? res.headers['Grpc-Status'] ?? null };
 }
 
 // Returns the total data-frame payload size and grpc-status from the trailer frame (flag 0x80).
@@ -24,7 +23,7 @@ export function parseFrames(body) {
         const flag = bytes[offset];
         const length = ((bytes[offset + 1] << 24) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 8) | bytes[offset + 4]) >>> 0;
         const start = offset + 5, end = start + length;
-        if (end > bytes.length) fail(`Truncated gRPC-Web frame: needs ${end} bytes, got ${bytes.length}`);
+        if (end > bytes.length) return { data, status: null, truncated: true };
         if ((flag & 0x80) === 0x80) {
             const match = /grpc-status:\s*(\d+)/i.exec(String.fromCharCode.apply(null, bytes.subarray(start, end)));
             status = match ? match[1] : null;
