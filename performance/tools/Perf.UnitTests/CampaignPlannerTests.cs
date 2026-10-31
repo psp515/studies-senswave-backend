@@ -60,4 +60,16 @@ public class CampaignPlannerTests
 
         Assert.Equal("r1-grpcweb-s4-500-otel", run.RunId);
     }
+    [Theory]
+    [InlineData(1, "GrpcWeb,Rest,Grpc")]
+    [InlineData(2, "Grpc,Rest,GrpcWeb")]
+    public void TransportOrderIsPinnedForKnownSeed(int round, string expected)
+    {
+        var order = CampaignPlanner.Expand(Campaign(), 42)
+            .Where(r => r.Round == round)
+            .Select(r => r.Transport)
+            .Distinct();
+
+        Assert.Equal(expected, string.Join(",", order));
+    }
 }

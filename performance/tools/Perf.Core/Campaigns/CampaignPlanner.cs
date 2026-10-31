@@ -14,8 +14,8 @@ public static class CampaignPlanner
 
         for (var round = 1; round <= campaign.Rounds; round++)
         {
-            var random = new Random(HashCode.Combine(seed, round));
-            var transports = campaign.Transports.OrderBy(_ => random.Next()).ToArray();
+            var random = new Random(unchecked(seed * 31 + round));
+            var transports = Shuffle(campaign.Transports, random);
 
             foreach (var otel in campaign.Otel)
             foreach (var transport in transports)
@@ -25,6 +25,18 @@ public static class CampaignPlanner
         }
 
         return runs;
+    }
+
+    private static Transport[] Shuffle(Transport[] source, Random random)
+    {
+        var items = (Transport[])source.Clone();
+        for (var i = items.Length - 1; i > 0; i--)
+        {
+            var j = random.Next(i + 1);
+            (items[i], items[j]) = (items[j], items[i]);
+        }
+
+        return items;
     }
 
     private static string RunId(int round, Transport transport, Scenario scenario, int rate, bool otel) =>
