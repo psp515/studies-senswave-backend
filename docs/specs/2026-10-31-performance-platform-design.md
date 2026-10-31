@@ -20,7 +20,7 @@ Out of scope: measurements on the Android device (mode B in the thesis is droppe
 
 | Id | Name | REST | gRPC rpc |
 |---|---|---|---|
-| S1 | Flat data | `GET /api/v1/users` | `senswave.users.v1.AccountService/GetInfo` |
+| S1 | Flat data | `GET /api/v1/users` | `senswave.users.v1.UsersService/GetUser` |
 | S2 | List of objects | `GET /api/v1/devices/operations/display?deviceId=…&size=30` | `senswave.devices.v1.OperationsService/DisplayOperations` |
 | S3 | Nested list | `GET /api/v1/devices/dashboards/{id}/display` | `senswave.devices.v1.DashboardsService/DisplayDashboard` |
 | S4 | String | `GET /api/v1/legal/terms` | `senswave.users.v1.LegalService/GetTermsAndConditions` |
@@ -75,7 +75,7 @@ performance/
   stack/.env.template
   local/compose.yml            # includes stack/, adds postgres + mosquitto
   runner/compose.yml           # load side: PerfRunner image
-  runner/campaigns/*.yaml      # smoke.yaml, full.yaml
+  runner/campaigns/*.json      # smoke.json, full.json
   k6/lib/                      # rest, grpc, grpc-web clients, options builder
   k6/s1.js … s5.js
   grafana/dashboard.json
@@ -99,10 +99,10 @@ An ASP.NET minimal API over TLS. Every call needs `Authorization: Bearer <AGENT_
 | `GET /status` | which API is running and whether it's healthy; enforced limits for every container (`cpuset`, `cpus`, `mem_limit`); image digest; git SHA label |
 | `POST /activate` `{transport, otel, runId}` | stop all three APIs → `DROP DATABASE IF EXISTS senswave_run WITH (FORCE)` → `CREATE DATABASE senswave_run TEMPLATE senswave_template` → recreate and start the target with `Diagnostics__OpenTelemetry__Enabled`, `OTEL_RESOURCE_ATTRIBUTES=run_id=<runId>` → wait until healthy |
 | `POST /stop` | stop all APIs |
-| `POST /template` `{source}` | stop all APIs, create `senswave_template` from a seeded database |
+| `POST /prepare` | seed `senswave_seed` and create `senswave_template` from it (see PerfRunner `prepare`) |
 | `GET /logs/{transport}?since=` | log tail of the API container |
 
-- **Containers are switched** with `docker compose -f stack.yml up -d --force-recreate --no-deps api-<t>`. Recreating the container is the only way to change its environment. The agent image therefore contains the official Docker CLI and the Compose plugin (copied from `docker:cli`), and mounts `/var/run/docker.sock` and the stack directory.
+- **Containers are switched through the Docker Engine API** (plain `HttpClient` over `/var/run/docker.sock`, no Docker SDK or CLI). Changing an environment variable requires recreating the container, so the agent inspects the existing container, removes it, and creates it again from the inspected `Config`, `HostConfig` and network aliases with the overridden env vars. Bind mounts keep the host paths compose resolved, so nothing has to match paths inside the agent. All containers are created once with `docker compose --profile seed up --no-start` on the VM.
 - **DB access** goes through Npgsql. The admin connection string comes from `.env`.
 - `activate` is serialized: one at a time, and a second call gets `409`.
 
@@ -110,27 +110,28 @@ An ASP.NET minimal API over TLS. Every call needs `Authorization: Bearer <AGENT_
 
 A .NET console app. Its image contains the k6 binary and PerfStream. Commands:
 
-- `prepare`:
-  1. activate `api-rest` against an empty `senswave_seed`
-  2. run the existing Seed tool (100 generated users, a shared broker, homes, devices, dashboards)
-  3. call `POST /template`
-- `run <campaign.yaml>`: runs the campaign.
+- `prepare`: calls the agent's `POST /prepare`, which runs everything on the VM: recreate an empty `senswave_seed`, start `api-rest` on it, run the existing Seed tool as a one-off `seed` compose service (100 generated users, a shared broker, homes, devices, dashboards), wait for its `Initial seed finished` log line (the Seed host does not exit on its own), stop both, then create `senswave_template` from `senswave_seed`.
+- `run <campaign.json>`: runs the campaign.
 - `export <campaign>`: repeats the server export for runs that are missing it.
-- `archive <campaign>`: zips `results/<campaign>` and uploads it to Azure Blob storage (connection string in `.env`).
+- `archive <campaign>`: zips `results/<campaign>` and uploads it to Azure Blob storage with a single `PUT` to a container SAS URL from `.env` (plain `HttpClient`, no Azure SDK).
 
-Campaign file:
+Campaign file (JSON, read with `System.Text.Json`; YAML would need a new library):
 
-```yaml
-target: { api: https://perf.example.com:8443, agent: https://perf.example.com:9443 }
-rounds: 3
-transports: [Rest, Grpc, GrpcWeb]   # shuffled per round, seed recorded
-scenarios: [S1, S2, S3, S4, S5, S6a, S6b]
-rates: [100, 500, 1000]
-otel: [on]                           # [on, off] for overhead control runs
-warmup: 30s
-duration: 5m
-export: { traces: true, rawK6: false }
+```json
+{
+  "target": { "api": "https://perf.example.com:8443", "agent": "https://perf.example.com:9443" },
+  "rounds": 3,
+  "transports": ["Rest", "Grpc", "GrpcWeb"],
+  "scenarios": ["S1", "S2", "S3", "S4", "S5", "S6a", "S6b"],
+  "rates": [100, 500, 1000],
+  "otel": [true],
+  "warmupSeconds": 30,
+  "durationSeconds": 300,
+  "export": { "traces": true, "rawK6": false }
+}
 ```
+
+Transports are shuffled per round with a recorded seed. `otel: [true, false]` adds the overhead control runs.
 
 Each run goes through these steps:
 
@@ -153,8 +154,9 @@ A .NET console app started by the runner instead of k6.
 - **Publisher:**
   - S6a: MQTT (`MQTTnet`) to the external broker, as the device.
   - S6b: tile action calls through the API over the transport under test.
-- **Every event carries its send timestamp.** PerfStream records delivery latency (p50/p95/p99/max), lost events and connection setup time, written to `stream-summary.json` in the same shape as the k6 summary.
-- **Clocks:** both sides use the load machine's clock in S6b. In S6a the publisher and the subscriber are the same process, so there's no clock skew.
+- **Correlation.** Live-update messages carry only a `device_id`, no timestamp, and the contract is not changed. PerfStream keeps a FIFO queue of publish times per device and matches each delivered update for that device to the oldest pending publish. Delivery latency = receive time − publish time, both from the same process clock, so there is no clock skew.
+- PerfStream records delivery latency (p50/p95/p99/max), lost events (still pending 5 s after the run) and connection setup time, written to `stream-summary.json` in the same shape as the k6 summary.
+- **MQTT limits.** The API's broker client throttles by default (`MilisecondSpanBetweenMessagesOnSameTopic: 100`, `MessageRateLimiter.TokenLimit: 150` per 60 s). The perf stack overrides them so the client allows 1000 events/s across 100 devices (10/s per device).
 
 ### k6 scripts
 
@@ -291,7 +293,7 @@ A summary table per scenario.
    - k6 can't read responses incrementally and its WebSockets are HTTP/1.1 only, hence PerfStream.
    - S5 needs a reachable MQTT broker.
    - `ModuleLoader` loads `Senswave*.dll`, hence the tool names.
-   - Changing an env var requires recreating the container, hence the Docker CLI in the agent.
+   - Changing an env var requires recreating the container. Running `docker compose` inside the agent breaks relative bind-mount paths, so the agent recreates containers through the Engine API from their own inspect data.
    - A database can't be dropped while it has open connections, so the APIs are stopped first and `WITH (FORCE)` is used.
    - TLS without the Cloudflare proxy, via DNS-01.
 
