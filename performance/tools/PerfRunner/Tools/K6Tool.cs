@@ -9,7 +9,8 @@ public sealed record RunContext(RunSpec Run, Campaign Campaign, string RunDir, s
 
 /// <param name="MeasureStartUtc">Set by tools that run warm-up and measurement in one process (PerfStream).</param>
 public sealed record RunToolResult(bool Success, long Dropped, double ErrorRate, string Output,
-    DateTimeOffset? MeasureStartUtc = null, DateTimeOffset? MeasureEndUtc = null);
+    DateTimeOffset? MeasureStartUtc = null, DateTimeOffset? MeasureEndUtc = null,
+    double? DeliveryP99Ms = null, long Lost = 0);
 
 public interface IRunTool
 {

@@ -75,7 +75,8 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
             if (!result.Success)
                 return await Finish(runDir, Meta("failed", ["measured run failed", Trim(result.Output)]), run, started, ct);
 
-            var gates = Gates.Evaluate(new RunMetrics(result.Dropped, result.ErrorRate, cpu.AverageBetween(measureStart.Value, measureEnd.Value)));
+            var gates = Gates.Evaluate(new RunMetrics(result.Dropped, result.ErrorRate, cpu.AverageBetween(measureStart.Value, measureEnd.Value),
+                (measureEnd.Value - measureStart.Value).TotalSeconds, campaign.DurationSeconds, result.DeliveryP99Ms, result.Lost));
             return await Finish(runDir, Meta(gates.Passed ? "valid" : "invalid", gates.Failures), run, started, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

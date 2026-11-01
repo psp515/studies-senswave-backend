@@ -49,7 +49,8 @@ public sealed class StreamTool(RunnerSettings settings) : IRunTool
             var published = Math.Max(s["published"]!.GetValue<long>(), 1);
             var errors = s["lost"]!.GetValue<long>() + s["publishFailures"]!.GetValue<long>() + (s["subscriptionsEnded"]?.GetValue<long>() ?? 0);
             return new RunToolResult(process.ExitCode == 0, s["publishBehind"]!.GetValue<long>(), (double)errors / published, output,
-                ReadTime(s, "measureStartUtc"), ReadTime(s, "measureEndUtc"));
+                ReadTime(s, "measureStartUtc"), ReadTime(s, "measureEndUtc"),
+                s["latencyMs"]?["p99"]?.GetValue<double>(), s["lost"]!.GetValue<long>());
         }
     }
 

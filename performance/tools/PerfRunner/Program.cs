@@ -34,7 +34,8 @@ switch (args[0])
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
             Console.Error.WriteLine("Cancelled: stopping the API under test.");
-            try { await agent.Stop(CancellationToken.None); }
+            using var stopTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            try { await agent.Stop(stopTimeout.Token); }
             catch (Exception ex) { Console.Error.WriteLine($"Could not stop the agent: {ex.Message}"); }
             return 130;
         }

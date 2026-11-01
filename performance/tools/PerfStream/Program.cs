@@ -47,6 +47,7 @@ var warmup = s.Mode == "verify" ? 0 : s.WarmupSeconds;
 var total = (warmup + s.DurationSeconds) * (long)s.Rate;
 var measuredFrom = warmup * (long)s.Rate;
 long failures = 0, behind = 0;
+var slowPublish = TimeSpan.FromSeconds(1);
 var inflight = new List<Task>();
 var start = Now();
 var measureStart = DateTimeOffset.UtcNow;
@@ -65,7 +66,7 @@ try
             var wait = due - Now();
             if (wait > TimeSpan.TicksPerMillisecond)
                 await Task.Delay(TimeSpan.FromTicks(wait), cts.Token);
-            else if (wait < -TimeSpan.FromMilliseconds(100).Ticks)
+            else if (wait < -TimeSpan.FromMilliseconds(100).Ticks && i >= measuredFrom)
                 behind++;
 
             if (i == measuredFrom)
@@ -74,15 +75,23 @@ try
             var user = data.Users[(int)(i % data.Users.Count)];
             var publishedAt = Now();
             tracker.Published(user.DeviceId, publishedAt, measured: i >= measuredFrom);
-            var sequence = i;
+            var sequence = i / data.Users.Count;      // per-user counter: every device sees alternating values
+            var measured = i >= measuredFrom;
             inflight.Add(Task.Run(async () =>
             {
-                try { await publisher.Publish(user, sequence, cts.Token); }
+                try
+                {
+                    await publisher.Publish(user, sequence, cts.Token);
+                    // A publish call that takes over a second means the system under test is falling behind (backlog).
+                    if (measured && TimeSpan.FromTicks(Now() - publishedAt) > slowPublish)
+                        Interlocked.Increment(ref behind);
+                }
                 catch
                 {
                     // A failed publish will never be delivered: drop it from the pending FIFO so later matches stay aligned.
                     tracker.Retract(user.DeviceId, publishedAt);
-                    Interlocked.Increment(ref failures);
+                    if (measured)
+                        Interlocked.Increment(ref failures);
                 }
             }));
             if (i % 1000 == 0 && inflight.Count > 2000)
