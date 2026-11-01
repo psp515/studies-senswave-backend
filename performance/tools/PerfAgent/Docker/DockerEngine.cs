@@ -42,7 +42,7 @@ public sealed class DockerEngine : IDockerEngine, IDisposable
 
     public async Task<string> Logs(string name, long sinceUnix, CancellationToken ct)
     {
-        var response = await Send(HttpMethod.Get, $"/containers/{name}/logs?stdout=1&stderr=1&timestamps=1&since={sinceUnix}", null, ct);
+        var response = await Send(HttpMethod.Get, $"/containers/{name}/logs?stdout=1&stderr=1&timestamps=1&since={sinceUnix}&tail=2000", null, ct);
         return DockerLogDemuxer.Demux(await response.Content.ReadAsByteArrayAsync(ct));
     }
 
