@@ -5,8 +5,8 @@ name: senswave-perf
 
 include:
   - path: ../stack/compose.yml
-    # alloy-defaults.env first: local-only placeholders so Alloy starts without Grafana Cloud; stack/.env wins when it sets them.
-    env_file: [ ./alloy-defaults.env, ../stack/.env ]
+    # alloy-defaults.env.local first: local-only placeholders so Alloy starts without Grafana Cloud; stack/.env wins when it sets them.
+    env_file: [ ./alloy-defaults.env.local, ../stack/.env ]
 
 services:
   database:

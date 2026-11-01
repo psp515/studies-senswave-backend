@@ -350,7 +350,7 @@ docker compose -f performance/runner/compose.yml run --rm --build runner prepare
 
 `prepare` is slow (seeding); repeat it only when the data model or the commit changes.
 
-Before the first campaign, verify that the Alloy logs (`docker logs Senswave.Perf.Alloy`) show no export errors. `GRAFANA_CLOUD_OTLP_ENDPOINT` and `GRAFANA_CLOUD_PROM_URL` have no fallback in `stack/compose.yml`, so a forgotten value fails loudly; only the local compose supplies placeholders (`local/alloy-defaults.env`).
+Before the first campaign, verify that Alloy is Up (`docker ps`) and its logs (`docker logs Senswave.Perf.Alloy`) show no errors. `GRAFANA_CLOUD_OTLP_ENDPOINT` and `GRAFANA_CLOUD_PROM_URL` have no fallback in `stack/compose.yml`, so a forgotten value fails loudly; only the local compose supplies placeholders (`local/alloy-defaults.env.local`).
 
 Then verify the Grafana Cloud metric names once ([section 6](#6-monitoring)), run the smoke campaign against Azure (`runner/campaigns/smoke.json` with the target edited), and only then the full campaign.
 
@@ -643,8 +643,8 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 **Solution:** the agent now asks Docker for the last 2000 lines only (`tail=2000`).
 
 **Problem:** Alloy crash-looped locally ("at least one endpoint must be specified") because `GRAFANA_CLOUD_OTLP_ENDPOINT` / `GRAFANA_CLOUD_PROM_URL` are empty without Grafana Cloud, contrary to "the Grafana Cloud variables can stay empty locally".
-**Solution:** `local/alloy-defaults.env` (loaded first by `local/compose.yml`'s `include`; `stack/.env` overrides it) supplies `http://localhost:1...` placeholders. Alloy now starts locally and its exports fail (expected). The Azure `stack/compose.yml` has no fallback, so missing values still fail loudly. Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
+**Solution:** `local/alloy-defaults.env.local` (loaded first by `local/compose.yml`'s `include`; `stack/.env` overrides it) supplies `http://localhost:1...` placeholders. Alloy now starts locally and its exports fail (expected). The Azure `stack/compose.yml` has no fallback, so missing values still fail loudly. Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
 
 **Result:** 21 runs, 18 valid. S5 (write command) was `invalid` on all three transports at 100/s (dropped iterations 5 to 330): during S5 and S6b the API container sits at its 200% CPU limit (the write path runs automations, widget updates and MQTT publish), so latency grows (S5 p50 60-105 ms, S6b delivery p50 13 s on Grpc/Rest). This is consistent with CPU saturation of the 2-vCPU API (`docker stats` sampling); unconfirmed until the Azure re-run. Gates were not loosened. S6b runs are marked `valid` although delivery latency is very high: the gates do not look at stream latency.
 
-**Known issue:** `run` throws an unhandled exception (exit code 139 in the container) if the agent is unreachable at the final `agent.Stop`; per-run results written before that are intact.
+**Known issue:** `run` throws an unhandled exception if the agent is unreachable at the final `agent.Stop`; per-run results written before that are intact.
