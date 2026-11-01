@@ -16,7 +16,7 @@ Measures REST, gRPC and gRPC-Web **from the server's point of view**, under iden
 
 - One API instance is under load at a time, the other two are stopped. They are switched by PerfAgent.
 - Every run starts from the same database state (`senswave_template` copied to `senswave_run`).
-- Server telemetry (OpenTelemetry, container and host metrics) goes through Grafana Alloy to Grafana Cloud and is exported to local files after each run.
+- Server telemetry (OpenTelemetry, container and host metrics) goes through Grafana Alloy to Grafana Cloud and is exported to local files once, at the end of `run` (or later with `perfrunner export <dir>`).
 - Client metrics (k6, PerfStream) are paired with server metrics for the same time window.
 - All three transports run over **HTTP/2 over TLS**.
 
@@ -63,7 +63,7 @@ The VM's public name is a Cloudflare record in **DNS-only** mode (no proxy). The
 2. **Verification.** Fail fast, no measurement. `/status` must report the expected transport, healthy; log in as the seeded users over the transport under test, discover device, dashboard and tile IDs; one successful call per scenario. For S5/S6 a test message must also arrive through the broker.
 3. **Warm-up** (30 s, excluded; smoke: 10 s).
 4. **Measurement** (5 min; smoke: 30 s). Both windows are recorded in UTC.
-5. **Validity gates:** `dropped_iterations == 0`, error rate below 1%, load-generator CPU below 80% on average.
+5. **Validity gates:** `dropped_iterations == 0`, error rate below 1%, load-generator CPU below 80% on average, and the measured window within max(2 s, 5%) of the campaign duration. Stream scenarios (S6) additionally need zero lost events and a delivery p99 of at most 5000 ms.
 6. **Export** of the server metrics for the measurement window (automatic at the end of `run`).
 
 ### Scenarios and load
@@ -134,7 +134,7 @@ cp performance/runner/.env.template performance/runner/.env
 
 Edit both files:
 
-- `AGENT_TOKEN` in `performance/stack/.env` and `performance/runner/.env`: the same random string of at least 16 characters.
+- `AGENT_TOKEN` in `performance/stack/.env` and `performance/runner/.env`: the same random 64-hex-character string. Generate it once with `openssl rand -hex 32`. The agent refuses (401 for every request, error in its log) a token shorter than 32 characters or equal to the `change-me-to-a-long-random-string` template.
 - The local defaults in `stack/.env.template` already match the local stack: `POSTGRES_HOST=database`, `SEED_BROKER_URL=mqtt`, `SEED_BROKER_PORT=8883`, `API_SSL_CERT_FILE=/https/mqtt.crt`, `SEED_SSL_CERT_FILE=/https/senswave.api.crt`.
 - Machines with fewer than 4 vCPUs: set `API_CPUSET=0-1` and `SIDE_CPUSET=0-1`. The Grafana Cloud variables can stay empty locally.
 
@@ -296,7 +296,7 @@ Set at least these values in `performance/stack/.env`:
 | Variable | Azure value |
 |---|---|
 | `PERF_API_HOST` | `perf.example.com` (the DNS name; also the in-network alias the seed uses) |
-| `PERF_ENV` | `azure` (Alloy label `env`) |
+| `PERF_ENV` | `azure` (Alloy label `env`); required, `stack/compose.yml` has no default (the local setup supplies `local`) |
 | `GIT_SHA` | the commit under test; a `.env` file does not expand `$(...)`, so export it in the shell before `up --build` (see 3.9) |
 | `API_CERTIFICATE_PASSWORD` | the PFX password from 3.6 |
 | `SEED_SSL_CERT_FILE` | `/etc/ssl/certs/ca-certificates.crt` (seed trusts the Let's Encrypt chain through the system CAs) |
@@ -305,7 +305,7 @@ Set at least these values in `performance/stack/.env`:
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | the Flexible Server admin |
 | `SEED_BROKER_URL`, `SEED_BROKER_PORT` | the external broker's host and **TLS** port |
 | `SEED_BROKER_USERNAME`, `SEED_BROKER_PASSWORD` | broker credentials |
-| `AGENT_TOKEN` | random string, at least 16 characters |
+| `AGENT_TOKEN` | `openssl rand -hex 32` (at least 32 characters; the same value in `runner/.env`) |
 | `GRAFANA_CLOUD_*` | from the Grafana Cloud stack (see [section 6](#6-monitoring)) |
 
 `API_SSL_CERT_FILE` and `SEED_SSL_CERT_FILE` **replace** the system CA bundle inside the container. With the local value (`/https/mqtt.crt`) only the Mosquitto stand-in is trusted.
@@ -469,7 +469,7 @@ Native gRPC in k6 reports only total duration, so cross-transport comparisons us
 | `meta.json` `status` | Meaning | What to do |
 |---|---|---|
 | `valid` | Verification passed and all gates passed. | Nothing. Only `valid` runs get a server export. |
-| `invalid` | Measured, but a gate failed: `dropped_iterations > 0` (load generator could not keep the rate), error rate >= 1%, or average load-generator CPU > 80%. `failures` lists which. | Not used for results. If dropped iterations or CPU, the load side is too small: use a stronger load machine, or lower the rate. If errors, read `agent-logs.txt`. |
+| `invalid` | Measured, but a gate failed: `dropped_iterations > 0` (load generator could not keep the rate), error rate >= 1%, or average load-generator CPU >= 80%, a measured window that differs from the campaign duration by more than max(2 s, 5%) (backlog or stall), or for S6: any lost event or delivery latency p99 above 5000 ms. `failures` lists which. | Not used for results. If dropped iterations or CPU, the load side is too small: use a stronger load machine, or lower the rate. If errors, read `agent-logs.txt`. |
 | `failed-verification` | Activation unhealthy, wrong transport reported, or a verification call or broker test failed. No measurement was taken. | Read `failures` and `agent-logs.txt`; check broker reachability and credentials, and that `prepare` was run on this commit. |
 | `failed` | Exception or a failing measured run. | Same as above. |
 
@@ -479,7 +479,7 @@ Before aggregating, filter to `status == "valid"` and, per run id, take the late
 
 ### Backup routine
 
-- **After every run:** the server export runs automatically at the end of `run` (it waits 60 s for the last metrics to reach Grafana Cloud). If it failed (exit code 3) or credentials were missing:
+- **After every campaign:** the server export runs once, automatically, at the end of `run` (it waits 60 s for the last metrics to reach Grafana Cloud); it is not repeated after each run. If it failed (exit code 3) or credentials were missing:
 
 ```bash
 docker compose -f performance/runner/compose.yml run --rm runner export results/<campaign-dir>
@@ -522,7 +522,7 @@ Create a free Grafana Cloud stack. From its "OpenTelemetry" and "Prometheus" det
 
 ### First step after configuring Grafana Cloud: verify metric names
 
-The metric names in `tools/Perf.Core/Export/ExportQueries.cs` and in the dashboard, and the promotion of `run_id` / `transport` onto data points, are **not verified** against a live Grafana Cloud (no credentials existed during implementation). Check once, before the first real campaign. Activate `Grpc` with run id `names-check` through the agent, send a few requests (for example a k6 verify run of `s1.js`), wait 60 s, then:
+The metric names in `tools/Perf.Core/Export/ExportQueries.cs` and in the dashboard, and the promotion of `run_id` / `transport` onto data points, are **not verified** against a live Grafana Cloud (no credentials existed during implementation). In particular, `ExportQueries.cs` and the dashboard filter `http_server_request_duration_seconds_*` on `url_scheme="https"` to exclude the Docker health check (plain HTTP on 5001); confirm that this label name exists at the first real export (`count by (url_scheme) (http_server_request_duration_seconds_count)`) and adjust if the OTLP-to-Prometheus conversion names it differently. Check once, before the first real campaign. Activate `Grpc` with run id `names-check` through the agent, send a few requests (for example a k6 verify run of `s1.js`), wait 60 s, then:
 
 ```bash
 curl -s -u "$GRAFANA_PROM_USER:$GRAFANA_READ_TOKEN" "$GRAFANA_PROM_URL/api/v1/label/__name__/values" | tr ',' '\n' | grep -E "http_server_request_duration|process_cpu|dotnet_gc|dotnet_thread_pool|kestrel|container_cpu|container_memory_working|container_network"
@@ -599,7 +599,7 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 **Solution:** a custom `HttpConnectionOptions.WebSocketFactory` creates the socket (HTTP 2.0, `RequestVersionExact`), connects with an `HttpMessageInvoker` over `SocketsHttpHandler` and sets `Authorization: Bearer` itself. Kestrel accepts WebSockets over HTTP/2 with the current configuration, no HTTP/1.1 fallback is needed, and S6 over REST therefore runs over HTTP/2 like the other scenarios.
 
 **Problem:** live updates carry only a `device_id`; the Pico state operation produces both a device-tile update and a dashboard widget update, so counting both would double-deliver.
-**Solution:** only device-tile updates are counted (gRPC `DeviceTile`, SignalR update type `deviceTileActionUpdate`, key `deviceId`). Delivery is matched FIFO per device. Limitation: after a real loss, later matches for that device are offset. Publishes that fail are retracted from the pending queue.
+**Solution:** only device-tile updates are counted (gRPC `DeviceTile`, SignalR update type `deviceTileActionUpdate`, key `deviceId`). Delivery is matched FIFO per device. Limitation: after a real loss, later matches for that device would be offset, so a stream run with any lost event is marked `invalid` (gate "lost events bias FIFO latency matching"). Publishes that fail are retracted from the pending queue. Further S6 gates: delivery p99 above 5000 ms (unbounded backlog) is invalid, and measured publishes whose call took over 1 s are counted in `publishBehind`, which fails the run through `dropped`. Warm-up events are not counted in `publishBehind` or `publishFailures`.
 
 **Problem:** percentile rank off by one (p=7, n=100 returned 8).
 **Solution:** `Percentiles.Of` uses `Math.Ceiling(p * n / 100.0)`; unit test added.
@@ -643,8 +643,8 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 **Solution:** the agent now asks Docker for the last 2000 lines only (`tail=2000`).
 
 **Problem:** Alloy crash-looped locally ("at least one endpoint must be specified") because `GRAFANA_CLOUD_OTLP_ENDPOINT` / `GRAFANA_CLOUD_PROM_URL` are empty without Grafana Cloud, contrary to "the Grafana Cloud variables can stay empty locally".
-**Solution:** `local/alloy-defaults.env.local` (loaded first by `local/compose.yml`'s `include`; `stack/.env` overrides it) supplies `http://localhost:1...` placeholders. Alloy now starts locally and its exports fail (expected). The Azure `stack/compose.yml` has no fallback, so missing values still fail loudly. Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
+**Solution:** `local/alloy-defaults.env.local` (loaded first by `local/compose.yml`'s `include`; `stack/.env` overrides it) supplies `http://localhost:1...` placeholders. Alloy now starts locally and its exports fail (expected). The Azure `stack/compose.yml` has no fallback, so missing values still fail loudly. The same file sets `PERF_ENV=local` (the Azure compose has no default, `stack/.env` must set `azure`) and `API_BIND` / `AGENT_BIND=127.0.0.1`, so locally the API and agent ports are published on the loopback only; the Azure default is `0.0.0.0` (restricted by the NSG). Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
 
-**Result:** 21 runs, 18 valid. S5 (write command) was `invalid` on all three transports at 100/s (dropped iterations 5 to 330): during S5 and S6b the API container sits at its 200% CPU limit (the write path runs automations, widget updates and MQTT publish), so latency grows (S5 p50 60-105 ms, S6b delivery p50 13 s on Grpc/Rest). This is consistent with CPU saturation of the 2-vCPU API (`docker stats` sampling); unconfirmed until the Azure re-run. Gates were not loosened. S6b runs are marked `valid` although delivery latency is very high: the gates do not look at stream latency.
+**Result:** 21 runs, 18 valid. S5 (write command) was `invalid` on all three transports at 100/s (dropped iterations 5 to 330): during S5 and S6b the API container sits at its 200% CPU limit (the write path runs automations, widget updates and MQTT publish), so latency grows (S5 p50 60-105 ms, S6b delivery p50 13 s on Grpc/Rest). This is consistent with CPU saturation of the 2-vCPU API (`docker stats` sampling); unconfirmed until the Azure re-run. Gates were not loosened. S6b runs were marked `valid` although delivery latency was very high: at that time the gates did not look at stream latency (since fixed: window, p99 and lost-event gates).
 
 **Known issue:** `run` throws an unhandled exception if the agent is unreachable at the final `agent.Stop`; per-run results written before that are intact.
