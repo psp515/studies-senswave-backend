@@ -350,6 +350,8 @@ docker compose -f performance/runner/compose.yml run --rm --build runner prepare
 
 `prepare` is slow (seeding); repeat it only when the data model or the commit changes.
 
+Before the first campaign, verify that the Alloy logs (`docker logs Senswave.Perf.Alloy`) show no export errors. `GRAFANA_CLOUD_OTLP_ENDPOINT` and `GRAFANA_CLOUD_PROM_URL` have no fallback in `stack/compose.yml`, so a forgotten value fails loudly; only the local compose supplies placeholders (`local/alloy-defaults.env`).
+
 Then verify the Grafana Cloud metric names once ([section 6](#6-monitoring)), run the smoke campaign against Azure (`runner/campaigns/smoke.json` with the target edited), and only then the full campaign.
 
 ## 4. Practical points (don't forget)
@@ -440,7 +442,7 @@ results/<campaign-file>-<yyyyMMdd-HHmm>/
 | `k6-summary.json` | k6 `--summary-export` of the measurement: p50/p90/p95/p99/max, `http_reqs`, `dropped_iterations`, checks, data sent/received. |
 | `stream-summary.json` | PerfStream: delivery latency p50/p95/p99/max, published, delivered, lost (still pending 5 s after the run), connection setup time. Same shape as the k6 summary. |
 | `k6-raw.csv.gz` | Raw k6 samples. |
-| `agent-logs.txt` | API container log tail for the attempt. |
+| `agent-logs.txt` | API container log, last 2000 lines only (the start of the attempt can be cut). |
 | `server/latency.csv` | p50/p95/p99 computed once over the whole measurement window from `http_server_request_duration_seconds_bucket`, so percentiles are never averaged. |
 | `server/throughput.csv` | Requests per second, by `error_type` and by `http_response_status_code`. |
 | `server/cpu.csv`, `memory.csv` | Container CPU and working set (cAdvisor), process CPU (OTel). |
@@ -635,12 +637,14 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 **Problem:** `CREATE DATABASE ... TEMPLATE` with the Flexible Server admin role is unverified (open point of the design).
 **Solution:** check at the first Azure `prepare`. Fallback if it is refused: `pg_dump` / `pg_restore` for the reset step (not implemented).
 
-### Findings from the local smoke campaign (2026-11-01, Windows + Docker Desktop, 12 logical CPUs)
+### Findings from the local smoke campaign (2026-11-01, smoke run at commit 05e94ac, Windows + Docker Desktop, 12 logical CPUs)
 
 **Problem:** the agent's `GET /logs/{transport}` ran out of memory (agent limit 128 MB, API log about 15 MB after an S5 run). The agent crashed and restarted, so the runner got "connection refused" / "SSL connection could not be established" for the rest of the campaign.
 **Solution:** the agent now asks Docker for the last 2000 lines only (`tail=2000`).
 
 **Problem:** Alloy crash-looped locally ("at least one endpoint must be specified") because `GRAFANA_CLOUD_OTLP_ENDPOINT` / `GRAFANA_CLOUD_PROM_URL` are empty without Grafana Cloud, contrary to "the Grafana Cloud variables can stay empty locally".
-**Solution:** `stack/compose.yml` defaults both to `http://localhost:1...`. Alloy now starts and its exports fail (expected). Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
+**Solution:** `local/alloy-defaults.env` (loaded first by `local/compose.yml`'s `include`; `stack/.env` overrides it) supplies `http://localhost:1...` placeholders. Alloy now starts locally and its exports fail (expected). The Azure `stack/compose.yml` has no fallback, so missing values still fail loudly. Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
 
-**Result:** 21 runs, 18 valid. S5 (write command) was `invalid` on all three transports at 100/s (dropped iterations 5 to 330): during S5 and S6b the API container sits at its 200% CPU limit (the write path runs automations, widget updates and MQTT publish), so latency grows (S5 p50 60-105 ms, S6b delivery p50 13 s on Grpc/Rest). This is a capacity limit of the 2-CPU API on the laptop, not a platform fault; gates were not loosened. Re-check on the Azure VM. S6b runs are marked `valid` although delivery latency is very high: the gates do not look at stream latency.
+**Result:** 21 runs, 18 valid. S5 (write command) was `invalid` on all three transports at 100/s (dropped iterations 5 to 330): during S5 and S6b the API container sits at its 200% CPU limit (the write path runs automations, widget updates and MQTT publish), so latency grows (S5 p50 60-105 ms, S6b delivery p50 13 s on Grpc/Rest). This is consistent with CPU saturation of the 2-vCPU API (`docker stats` sampling); unconfirmed until the Azure re-run. Gates were not loosened. S6b runs are marked `valid` although delivery latency is very high: the gates do not look at stream latency.
+
+**Known issue:** `run` throws an unhandled exception (exit code 139 in the container) if the agent is unreachable at the final `agent.Stop`; per-run results written before that are intact.
