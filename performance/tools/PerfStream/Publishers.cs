@@ -45,7 +45,7 @@ public sealed class MqttPublisher(IMqttClient client) : IPublisher
     internal static string DeviceTopic(UserData user) =>
         $"perf/controller/{System.Text.RegularExpressions.Regex.Match(user.Email, @"\d+").Value}";
 
-    // Alternate so every message is a value change.
+    // Alternate so every message is a value change (sequence is a per-user counter).
     internal static string DevicePayload(long sequence) => sequence % 2 == 0 ? "{\"working\":true}" : "{\"working\":false}";
 
     public async ValueTask DisposeAsync()

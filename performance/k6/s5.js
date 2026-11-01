@@ -1,7 +1,7 @@
 // S5 Write command: toggle the Pico controller tile (publishes to the device over MQTT).
 import exec from 'k6/execution';
 import { options as build } from './lib/config.js';
-import { nextUser } from './lib/data.js';
+import { nextUser, userCount } from './lib/data.js';
 import { run } from './lib/scenario.js';
 import * as rest from './lib/rest.js';
 import { stringField, messageField, boolValue } from './lib/protobuf.js';
@@ -10,7 +10,8 @@ export const options = build();
 
 export default function () {
     const user = nextUser();
-    const value = exec.scenario.iterationInTest % 2 === 0;
+    // Alternate per user (round-robin over users), so each device sees changing values.
+    const value = Math.floor(exec.scenario.iterationInTest / userCount) % 2 === 0;
     run({
         token: user.accessToken,
         rest: () => rest.post(`api/v1/devices/${user.deviceId}/tile/action`, { value }, user.accessToken),
