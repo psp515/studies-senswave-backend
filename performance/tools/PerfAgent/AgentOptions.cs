@@ -23,3 +23,22 @@ public sealed class AgentOptions
         [Transport.GrpcWeb] = "Senswave.Perf.GrpcWeb",
     };
 }
+
+/// <summary>Rules for the agent bearer token: it controls Docker and the databases, so a template or short value is refused.</summary>
+public static class AgentTokenPolicy
+{
+    public const string TemplateValue = "change-me-to-a-long-random-string";
+    public const int MinLength = 32;
+
+    /// <summary>Returns why the token is unusable, or null when it is acceptable.</summary>
+    public static string? Problem(string? token)
+    {
+        if (string.IsNullOrEmpty(token))
+            return "Agent__Token is not set";
+        if (token == TemplateValue)
+            return "Agent__Token is still the template value";
+        if (token.Length < MinLength)
+            return $"Agent__Token is shorter than {MinLength} characters";
+        return null;
+    }
+}

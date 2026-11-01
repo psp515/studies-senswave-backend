@@ -13,7 +13,7 @@ x-api: &api
   memswap_limit: ${API_MEMORY:-4g}
   pids_limit: 512
   ports:
-    - ${API_PORT:-8443}:8443
+    - ${API_BIND:-0.0.0.0}:${API_PORT:-8443}:8443
   volumes:
     - ${CERT_DIR:-../../docker/https}:/https:ro
     - ./api/appsettings.Production.json:/app/appsettings.Production.json:ro
@@ -40,7 +40,7 @@ x-api-environment: &api-environment
   # Trust store for outbound TLS to the broker: local = the Mosquitto stand-in cert, Azure = system CAs.
   SSL_CERT_FILE: ${API_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}
   OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
-  OTEL_RESOURCE_ATTRIBUTES: run_id=none,deployment.environment=${PERF_ENV:-local}
+  OTEL_RESOURCE_ATTRIBUTES: run_id=none,deployment.environment=${PERF_ENV:?PERF_ENV must be set (local | azure)}
 
 services:
   api-rest:
@@ -137,7 +137,7 @@ services:
     memswap_limit: 128m
     networks: [ perf ]
     ports:
-      - ${AGENT_PORT:-9443}:9443
+      - ${AGENT_BIND:-0.0.0.0}:${AGENT_PORT:-9443}:9443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CERT_DIR:-../../docker/https}:/https:ro
@@ -145,7 +145,7 @@ services:
       ASPNETCORE_URLS: https://+:9443
       ASPNETCORE_Kestrel__Certificates__Default__Path: /https/senswave.api.pfx
       ASPNETCORE_Kestrel__Certificates__Default__Password: ${API_CERTIFICATE_PASSWORD}
-      PERF_ENV: ${PERF_ENV:-local}
+      PERF_ENV: ${PERF_ENV:?PERF_ENV must be set (local | azure)}
       Agent__Token: ${AGENT_TOKEN}
       Agent__PostgresAdmin: Host=${POSTGRES_HOST};Port=${POSTGRES_PORT:-5432};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Database=postgres;Include Error Detail=true
 
@@ -168,7 +168,7 @@ services:
       - /sys:/host/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     environment:
-      PERF_ENV: ${PERF_ENV:-local}
+      PERF_ENV: ${PERF_ENV:?PERF_ENV must be set (local | azure)}
       GRAFANA_CLOUD_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT}
       GRAFANA_CLOUD_OTLP_USER: ${GRAFANA_CLOUD_OTLP_USER}
       GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL}

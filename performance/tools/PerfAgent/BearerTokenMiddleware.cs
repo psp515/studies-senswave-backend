@@ -12,7 +12,7 @@ public sealed class BearerTokenMiddleware(RequestDelegate next, IOptions<AgentOp
     {
         var header = Encoding.UTF8.GetBytes(context.Request.Headers.Authorization.ToString());
 
-        if (options.Value.Token.Length < 16 || !CryptographicOperations.FixedTimeEquals(header, _expected))
+        if (AgentTokenPolicy.Problem(options.Value.Token) is not null || !CryptographicOperations.FixedTimeEquals(header, _expected))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;

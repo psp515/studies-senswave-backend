@@ -20,6 +20,9 @@ builder.Services.AddSingleton<ActivationService>();
 
 var app = builder.Build();
 
+if (AgentTokenPolicy.Problem(app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AgentOptions>>().Value.Token) is { } tokenProblem)
+    app.Logger.LogError("{Problem}: every request will be answered with 401. Generate one with 'openssl rand -hex 32' and set the same value in stack/.env and runner/.env.", tokenProblem);
+
 app.UseMiddleware<BearerTokenMiddleware>();
 
 app.MapGet("/status", (ActivationService s, CancellationToken ct) => s.Status(ct));

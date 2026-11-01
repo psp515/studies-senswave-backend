@@ -6,7 +6,7 @@ namespace Perf.UnitTests;
 
 public class BearerTokenMiddlewareTests
 {
-    private const string Token = "0123456789abcdef0123";
+    private const string Token = "0123456789abcdef0123456789abcdef";
 
     private static async Task<(int Status, bool NextCalled)> Call(string configured, string? header)
     {
@@ -24,8 +24,8 @@ public class BearerTokenMiddlewareTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("Bearer wrong-token-0123456789")]
-    [InlineData("0123456789abcdef0123")]
+    [InlineData("Bearer wrong-token-0123456789wrong-token")]
+    [InlineData("0123456789abcdef0123456789abcdef")]
     public async Task RejectsMissingOrWrongToken(string? header)
     {
         var (status, next) = await Call(Token, header);
@@ -42,6 +42,27 @@ public class BearerTokenMiddlewareTests
         Assert.Equal(401, status);
         Assert.False(next);
     }
+
+    [Theory]
+    [InlineData("change-me-to-a-long-random-string")]
+    [InlineData("0123456789abcdef0123456789abcde")]
+    [InlineData("")]
+    public async Task RejectsEverythingForTemplateOrShortTokens(string configured)
+    {
+        var (status, next) = await Call(configured, "Bearer " + configured);
+
+        Assert.Equal(401, status);
+        Assert.False(next);
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("change-me-to-a-long-random-string", false)]
+    [InlineData("0123456789abcdef0123456789abcde", false)]
+    [InlineData("0123456789abcdef0123456789abcdef", true)]
+    public void TokenPolicyDescribesProblem(string? token, bool acceptable) =>
+        Assert.Equal(acceptable, AgentTokenPolicy.Problem(token) is null);
 
     [Fact]
     public async Task PassesThroughWithCorrectToken()
