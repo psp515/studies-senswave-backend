@@ -634,3 +634,13 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 
 **Problem:** `CREATE DATABASE ... TEMPLATE` with the Flexible Server admin role is unverified (open point of the design).
 **Solution:** check at the first Azure `prepare`. Fallback if it is refused: `pg_dump` / `pg_restore` for the reset step (not implemented).
+
+### Findings from the local smoke campaign (2026-11-01, Windows + Docker Desktop, 12 logical CPUs)
+
+**Problem:** the agent's `GET /logs/{transport}` ran out of memory (agent limit 128 MB, API log about 15 MB after an S5 run). The agent crashed and restarted, so the runner got "connection refused" / "SSL connection could not be established" for the rest of the campaign.
+**Solution:** the agent now asks Docker for the last 2000 lines only (`tail=2000`).
+
+**Problem:** Alloy crash-looped locally ("at least one endpoint must be specified") because `GRAFANA_CLOUD_OTLP_ENDPOINT` / `GRAFANA_CLOUD_PROM_URL` are empty without Grafana Cloud, contrary to "the Grafana Cloud variables can stay empty locally".
+**Solution:** `stack/compose.yml` defaults both to `http://localhost:1...`. Alloy now starts and its exports fail (expected). Also note: `runner/.env.template` ships `AGENT_TOKEN=change-me-...`; it must equal the value in `stack/.env`, otherwise every agent call is rejected.
+
+**Result:** 21 runs, 18 valid. S5 (write command) was `invalid` on all three transports at 100/s (dropped iterations 5 to 330): during S5 and S6b the API container sits at its 200% CPU limit (the write path runs automations, widget updates and MQTT publish), so latency grows (S5 p50 60-105 ms, S6b delivery p50 13 s on Grpc/Rest). This is a capacity limit of the 2-CPU API on the laptop, not a platform fault; gates were not loosened. Re-check on the Azure VM. S6b runs are marked `valid` although delivery latency is very high: the gates do not look at stream latency.
