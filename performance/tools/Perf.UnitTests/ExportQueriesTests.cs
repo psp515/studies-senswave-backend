@@ -44,6 +44,19 @@ public class ExportQueriesTests
     }
 
     [Fact]
+    public void HttpServerSelectorsExcludeThePlainHttpHealthCheck()
+    {
+        var http = ExportQueries.For(Meta()).Where(q => q.PromQl.Contains("http_server_request_duration_seconds")).ToList();
+
+        Assert.NotEmpty(http);
+        Assert.All(http, q =>
+        {
+            Assert.Contains("url_scheme=\"https\"", q.PromQl);
+            Assert.Contains("run_id=\"r1-grpc-s1-100-otel\"", q.PromQl);
+        });
+    }
+
+    [Fact]
     public void MetaWithoutMeasurementWindowDoesNotThrow()
     {
         var meta = Meta() with { MeasureStartUtc = null, MeasureEndUtc = null };

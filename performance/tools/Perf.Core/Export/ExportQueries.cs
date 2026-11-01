@@ -16,6 +16,8 @@ public static class ExportQueries
     public static IReadOnlyList<ExportQuery> For(RunMeta meta)
     {
         var run = $"run_id=\"{meta.RunId}\"";
+        // The Docker health check calls the API over plain HTTP (port 5001); only the HTTPS traffic is the load under test.
+        var http = $"{run},url_scheme=\"https\"";
         var container = $"name=\"{ContainerName(meta.Transport)}\"";
         var window = meta.MeasureStartUtc is { } start && meta.MeasureEndUtc is { } end ? (int)(end - start).TotalSeconds : 0;
 
@@ -23,11 +25,11 @@ public static class ExportQueries
 
         foreach (var q in new[] { "0.5", "0.95", "0.99" })
             list.Add(new("latency.csv", false,
-                $"histogram_quantile({q}, sum by (le) (increase(http_server_request_duration_seconds_bucket{{{run}}}[{window}s])))"));
+                $"histogram_quantile({q}, sum by (le) (increase(http_server_request_duration_seconds_bucket{{{http}}}[{window}s])))"));
 
-        list.Add(new("throughput.csv", true, $"sum(rate(http_server_request_duration_seconds_count{{{run}}}[30s]))"));
-        list.Add(new("throughput.csv", true, $"sum by (error_type) (rate(http_server_request_duration_seconds_count{{{run},error_type!=\"\"}}[30s]))"));
-        list.Add(new("throughput.csv", true, $"sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count{{{run}}}[30s]))"));
+        list.Add(new("throughput.csv", true, $"sum(rate(http_server_request_duration_seconds_count{{{http}}}[30s]))"));
+        list.Add(new("throughput.csv", true, $"sum by (error_type) (rate(http_server_request_duration_seconds_count{{{http},error_type!=\"\"}}[30s]))"));
+        list.Add(new("throughput.csv", true, $"sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count{{{http}}}[30s]))"));
         list.Add(new("cpu.csv", true, $"rate(container_cpu_usage_seconds_total{{{container}}}[30s])"));
         list.Add(new("cpu.csv", true, $"rate(process_cpu_time_seconds_total{{{run}}}[30s])"));
         list.Add(new("memory.csv", true, $"container_memory_working_set_bytes{{{container}}}"));
