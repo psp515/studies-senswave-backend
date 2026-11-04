@@ -1,7 +1,10 @@
+using System.Text.Json.Nodes;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
+using Perf.Core;
 using Perf.Client.Http;
 using Perf.Core.Runs;
 using Senswave.Contracts.DataSources.V1;
@@ -16,9 +19,11 @@ namespace Perf.Client.Grpc;
 internal sealed class GrpcApiClient : IApiClient
 {
     private readonly GrpcChannel _channel;
+    private readonly Transport _transport;
 
     public GrpcApiClient(ApiTarget target, bool web)
     {
+        _transport = web ? Transport.GrpcWeb : Transport.Grpc;
         HttpMessageHandler handler = HttpHandlers.Create(target);
         if (web)
             handler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, handler);
@@ -76,14 +81,16 @@ internal sealed class GrpcApiClient : IApiClient
         var dashboards = await new DashboardsService.DashboardsServiceClient(_channel).DisplayDashboardsAsync(
             new DisplayDashboardsRequest { DeviceId = deviceId }, Auth(accessToken), cancellationToken: ct);
 
-        return new UserData(email, accessToken, homeId, deviceId, dashboards.Items.First().Id);
+        var dashboard = dashboards.Items.FirstOrDefault(d => d.Name == Rest.RestApiClient.LargeDashboardName) ?? dashboards.Items.First();
+        return new UserData(email, accessToken, homeId, deviceId, dashboard.Id);
     }
 
     public async Task TileAction(string accessToken, string deviceId, bool value, CancellationToken ct) =>
         await new DevicesService.DevicesServiceClient(_channel).DeviceTileActionAsync(
             new DeviceTileActionRequest { DeviceId = deviceId, Value = Value.ForBool(value) }, Auth(accessToken), cancellationToken: ct);
 
-    public async Task<ILiveUpdateSubscription> Subscribe(string accessToken, string homeId, Action<string> onDeviceUpdate, CancellationToken ct)
+    public async Task<ILiveUpdateSubscription> Subscribe(string accessToken, string homeId, Action<string> onDeviceUpdate, CancellationToken ct,
+        Action<JsonNode, int>? onRawUpdate = null)
     {
         var lifetime = new CancellationTokenSource();
         var call = new LiveUpdatesService.LiveUpdatesServiceClient(_channel)
@@ -105,9 +112,40 @@ internal sealed class GrpcApiClient : IApiClient
         }
 
         var subscription = new Subscription(call, lifetime);
-        subscription.Start(onDeviceUpdate);
+        subscription.Start(onDeviceUpdate, onRawUpdate);
         return subscription;
     }
+
+    public async Task<ResponseSample> Sample(Scenario scenario, UserData user, CancellationToken ct)
+    {
+        if (scenario.IsStream())
+            return await StreamSample.Record(this, scenario, _transport, user, ct);
+
+        var auth = Auth(user.AccessToken);
+        (string Call, IMessage Message) result = scenario switch
+        {
+            Scenario.S1 => ("senswave.users.v1.UsersService/GetUser",
+                await new UsersService.UsersServiceClient(_channel).GetUserAsync(new GetUserRequest(), auth, cancellationToken: ct)),
+            Scenario.S2 => ("senswave.devices.v1.OperationsService/DisplayOperations",
+                await new OperationsService.OperationsServiceClient(_channel).DisplayOperationsAsync(
+                    new DisplayOperationsRequest { DeviceId = user.DeviceId, Page = 1, Size = 30 }, auth, cancellationToken: ct)),
+            Scenario.S3 => ("senswave.devices.v1.DashboardsService/DisplayDashboard",
+                await new DashboardsService.DashboardsServiceClient(_channel).DisplayDashboardAsync(
+                    new DisplayDashboardRequest { DashboardId = user.DashboardId }, auth, cancellationToken: ct)),
+            Scenario.S4 => ("senswave.users.v1.LegalService/GetTermsAndConditions",
+                await new LegalService.LegalServiceClient(_channel).GetTermsAndConditionsAsync(new GetTermsAndConditionsRequest(), cancellationToken: ct)),
+            Scenario.S5 => ("senswave.devices.v1.DevicesService/DeviceTileAction",
+                await new DevicesService.DevicesServiceClient(_channel).DeviceTileActionAsync(
+                    new DeviceTileActionRequest { DeviceId = user.DeviceId, Value = Value.ForBool(true) }, auth, cancellationToken: ct)),
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+        };
+
+        return new ResponseSample(scenario.ToString(), _transport.ToString(), result.Call, "protobuf", result.Message.CalculateSize(), ToJson(result.Message));
+    }
+
+    /// <summary>Protobuf message as JSON, including fields with default values (proto3 does not send them on the wire).</summary>
+    private static JsonNode ToJson(IMessage message) =>
+        JsonNode.Parse(new JsonFormatter(JsonFormatter.Settings.Default.WithFormatDefaultValues(true)).Format(message))!;
 
     public ValueTask DisposeAsync()
     {
@@ -122,13 +160,18 @@ internal sealed class GrpcApiClient : IApiClient
 
         public bool Ended => _ended;
 
-        public void Start(Action<string> onDeviceUpdate) => _reader = Task.Run(async () =>
+        public void Start(Action<string> onDeviceUpdate, Action<JsonNode, int>? onRawUpdate) => _reader = Task.Run(async () =>
         {
             try
             {
                 while (await call.ResponseStream.MoveNext(lifetime.Token))
                 {
                     var update = call.ResponseStream.Current;
+                    if (onRawUpdate is not null)
+                    {
+                        try { onRawUpdate(ToJson(update), update.CalculateSize()); } catch { /* sampling must not kill the reader */ }
+                    }
+
                     if (update.UpdateCase != LiveUpdate.UpdateOneofCase.DeviceTile)
                         continue;
 

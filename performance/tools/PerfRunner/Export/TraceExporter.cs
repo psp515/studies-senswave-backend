@@ -7,7 +7,7 @@ using Perf.Core.Runs;
 
 namespace PerfRunner.Export;
 
-/// <summary>Optional: up to 500 traces per valid run from the Grafana Cloud Tempo HTTP API, one JSON trace per line.</summary>
+/// <summary>Optional: up to 500 traces per valid or saturated run from the Grafana Cloud Tempo HTTP API, one JSON trace per line.</summary>
 public sealed class TraceExporter(string tempoUrl, string user, string token)
 {
     public async Task ExportCampaign(string campaignDir, CancellationToken ct)
@@ -18,7 +18,7 @@ public sealed class TraceExporter(string tempoUrl, string user, string token)
         foreach (var metaPath in Directory.GetFiles(campaignDir, "meta.json", SearchOption.AllDirectories))
         {
             var meta = JsonSerializer.Deserialize<RunMeta>(await File.ReadAllTextAsync(metaPath, ct), PerfJson.Options)!;
-            if (meta.Status != "valid" || meta.MeasureStartUtc is null || meta.MeasureEndUtc is null)
+            if (!RunStatus.HasMeasurement(meta.Status) || meta.MeasureStartUtc is null || meta.MeasureEndUtc is null)
                 continue;
 
             var q = Uri.EscapeDataString($"{{ resource.run_id = \"{meta.RunId}\" }}");

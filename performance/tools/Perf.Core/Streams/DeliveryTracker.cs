@@ -1,6 +1,7 @@
 namespace Perf.Core.Streams;
 
-public sealed record StreamResult(long Published, long Delivered, long Lost, long Unmatched, double[] LatenciesMs);
+/// <param name="DeliveredAtTicks">Receive timestamp of each recorded latency (same index as <paramref name="LatenciesMs"/>).</param>
+public sealed record StreamResult(long Published, long Delivered, long Lost, long Unmatched, double[] LatenciesMs, long[] DeliveredAtTicks);
 
 /// <summary>
 /// Live updates carry only a device id, so each delivery is matched to the oldest pending publish for that device (FIFO).
@@ -10,6 +11,7 @@ public sealed class DeliveryTracker
 {
     private readonly Dictionary<string, Queue<(long Ticks, bool Measured)>> _pending = new();
     private readonly List<double> _latencies = new();
+    private readonly List<long> _deliveredAt = new();
     private readonly object _lock = new();
     private long _published, _delivered, _unmatched;
 
@@ -68,6 +70,7 @@ public sealed class DeliveryTracker
             {
                 _delivered++;
                 _latencies.Add(TimeSpan.FromTicks(timestampTicks - published).TotalMilliseconds);
+                _deliveredAt.Add(timestampTicks);
             }
 
             return true;
@@ -81,7 +84,7 @@ public sealed class DeliveryTracker
             var cutoff = nowTicks - grace.Ticks;
             var lost = _pending.Values.SelectMany(q => q).LongCount(p => p.Measured && p.Ticks <= cutoff);
 
-            return new StreamResult(_published, _delivered, lost, _unmatched, _latencies.ToArray());
+            return new StreamResult(_published, _delivered, lost, _unmatched, _latencies.ToArray(), _deliveredAt.ToArray());
         }
     }
 }

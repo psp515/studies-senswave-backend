@@ -1,6 +1,5 @@
 using MQTTnet;
 using MQTTnet.Client;
-using Perf.Client;
 using Perf.Core.Runs;
 
 namespace PerfStream;
@@ -11,7 +10,7 @@ public interface IPublisher : IAsyncDisposable
     Task Publish(UserData user, long sequence, CancellationToken ct);
 }
 
-/// <summary>S6a: acts as the device and publishes to the external MQTT broker.</summary>
+/// <summary>S6: acts as the device and publishes to the MQTT broker; the API receives the message and pushes the update.</summary>
 public sealed class MqttPublisher(IMqttClient client) : IPublisher
 {
     public static async Task<MqttPublisher> Connect(StreamSettings s, CancellationToken ct)
@@ -53,11 +52,4 @@ public sealed class MqttPublisher(IMqttClient client) : IPublisher
         try { await client.DisconnectAsync(); } catch { /* best effort */ }
         client.Dispose();
     }
-}
-
-/// <summary>S6b: a user action through the API over the transport under test (SendEvents on).</summary>
-public sealed class TileActionPublisher(IApiClient api) : IPublisher
-{
-    public Task Publish(UserData user, long sequence, CancellationToken ct) => api.TileAction(user.AccessToken, user.DeviceId, sequence % 2 == 0, ct);
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

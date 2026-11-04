@@ -10,7 +10,7 @@ public class CampaignLoaderTests
       "target": { "api": "https://localhost:8443", "agent": "https://localhost:9443", "insecureTls": true },
       "rounds": 3,
       "transports": ["Rest", "Grpc", "GrpcWeb"],
-      "scenarios": ["S1", "S6a"],
+      "scenarios": ["S1", "S6"],
       "rates": [100, 500, 1000],
       "otel": [true, false],
       "warmupSeconds": 30,
@@ -27,10 +27,32 @@ public class CampaignLoaderTests
 
         Assert.Equal(3, campaign.Rounds);
         Assert.Equal([Transport.Rest, Transport.Grpc, Transport.GrpcWeb], campaign.Transports);
-        Assert.Equal([Scenario.S1, Scenario.S6a], campaign.Scenarios);
+        Assert.Equal([Scenario.S1, Scenario.S6], campaign.Scenarios);
         Assert.Equal([100, 500, 1000], campaign.Rates);
         Assert.True(campaign.Target.InsecureTls);
         Assert.Equal(100, campaign.Users.Count);
+    }
+
+    [Fact]
+    public void ParsesScenarioRatesAndKneeMode()
+    {
+        var campaign = CampaignLoader.Parse(Valid.Replace("\"rounds\": 3,", "\"rounds\": 3, \"scenarioRates\": { \"S6\": [20, 60] }, \"stopAfterSaturated\": true,"));
+
+        Assert.True(campaign.StopAfterSaturated);
+        Assert.Equal([20, 60], campaign.RatesFor(Scenario.S6));
+        Assert.Equal([100, 500, 1000], campaign.RatesFor(Scenario.S1));
+    }
+
+    [Theory]
+    [InlineData("{ \"S9\": [10] }")]          // unknown scenario
+    [InlineData("{ \"S4\": [10] }")]          // scenario not in the campaign
+    [InlineData("{ \"S1\": [] }")]            // empty
+    [InlineData("{ \"S1\": [10, 10] }")]      // duplicates
+    public void RejectsInvalidScenarioRates(string scenarioRates)
+    {
+        var ex = Assert.Throws<CampaignException>(() => CampaignLoader.Parse(Valid.Replace("\"rounds\": 3,", $"\"rounds\": 3, \"scenarioRates\": {scenarioRates},")));
+
+        Assert.Contains("scenarioRates", ex.Message);
     }
 
     [Theory]

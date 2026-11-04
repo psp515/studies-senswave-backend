@@ -72,4 +72,43 @@ public class GatesTests
         Assert.False(result.Passed);
         Assert.Contains(result.Failures, f => f.Contains("FIFO"));
     }
+
+    [Fact]
+    public void CleanRunIsValid() => Assert.Equal(RunStatus.Valid, Gates.Evaluate(new RunMetrics(0, 0, 0.5)).Status);
+
+    [Theory]
+    [InlineData(3, 0.0, null, null, 0)]        // dropped iterations
+    [InlineData(0, 0.02, null, null, 0)]       // errors
+    [InlineData(0, 0.0, 160.0, null, 0)]       // stretched window
+    [InlineData(0, 0.0, null, 13000.0, 0)]     // delivery backlog
+    [InlineData(0, 0.0, null, null, 1)]        // lost events
+    public void ServerSideFailuresWithAHealthyLoadGeneratorAreSaturated(long dropped, double errors, double? window, double? p99, long lost)
+    {
+        var result = Gates.Evaluate(new RunMetrics(dropped, errors, 0.5, window, 30, p99, lost));
+
+        Assert.Equal(RunStatus.Saturated, result.Status);
+        Assert.NotEmpty(result.Failures);
+    }
+
+    [Fact]
+    public void OverloadedLoadGeneratorWinsOverServerFailures()
+    {
+        var result = Gates.Evaluate(new RunMetrics(330, 0.02, 0.9));
+
+        Assert.Equal(RunStatus.InvalidLoadGenerator, result.Status);
+        Assert.Contains(result.Failures, f => f.Contains("load generator CPU"));
+        Assert.Contains(result.Failures, f => f.Contains("dropped_iterations"));
+    }
+
+    [Theory]
+    [InlineData("valid", true)]
+    [InlineData("saturated", true)]
+    [InlineData("invalid-loadgen", false)]
+    [InlineData("failed-verification", false)]
+    [InlineData("failed", false)]
+    public void ValidAndSaturatedRunsAreFinalAndExported(string status, bool kept)
+    {
+        Assert.Equal(kept, RunStatus.IsFinal(status));
+        Assert.Equal(kept, RunStatus.HasMeasurement(status));
+    }
 }

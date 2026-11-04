@@ -7,7 +7,11 @@ namespace Perf.Core.Runs;
 public sealed record RunMetrics(long DroppedIterations, double ErrorRate, double LoadGeneratorCpu,
     double? MeasuredWindowSeconds = null, int ExpectedWindowSeconds = 0, double? DeliveryP99Ms = null, long Lost = 0);
 
-public sealed record GateResult(bool Passed, IReadOnlyList<string> Failures);
+/// <param name="Status">A <see cref="RunStatus"/> value: valid, saturated or invalid-loadgen.</param>
+public sealed record GateResult(string Status, IReadOnlyList<string> Failures)
+{
+    public bool Passed => Status == RunStatus.Valid;
+}
 
 public static class Gates
 {
@@ -17,25 +21,31 @@ public static class Gates
     /// <summary>Allowed difference between the measured window and the campaign duration: max(2 s, 5%).</summary>
     public static double WindowToleranceSeconds(int expectedSeconds) => Math.Max(2.0, expectedSeconds * 0.05);
 
+    /// <summary>
+    /// An overloaded load generator invalidates the run (<see cref="RunStatus.InvalidLoadGenerator"/>). Otherwise any failed
+    /// gate means the system under test did not sustain the rate (<see cref="RunStatus.Saturated"/>), which is a result.
+    /// </summary>
     public static GateResult Evaluate(RunMetrics metrics, double maxErrorRate = 0.01, double maxLoadCpu = 0.80)
     {
-        var failures = new List<string>();
+        var server = new List<string>();
 
         if (metrics.DroppedIterations > 0)
-            failures.Add($"dropped_iterations = {metrics.DroppedIterations} (load generator could not keep the rate)");
+            server.Add($"dropped_iterations = {metrics.DroppedIterations} (the rate was not sustained)");
         if (metrics.ErrorRate >= maxErrorRate)
-            failures.Add($"error rate {metrics.ErrorRate:P2} >= {maxErrorRate:P0}");
-        // Spec: the load generator must stay below 80%, so 80% itself fails.
-        if (metrics.LoadGeneratorCpu >= maxLoadCpu)
-            failures.Add($"load generator CPU {metrics.LoadGeneratorCpu:P0} >= {maxLoadCpu:P0}");
+            server.Add($"error rate {metrics.ErrorRate:P2} >= {maxErrorRate:P0}");
         if (metrics.MeasuredWindowSeconds is { } window
             && Math.Abs(window - metrics.ExpectedWindowSeconds) > WindowToleranceSeconds(metrics.ExpectedWindowSeconds))
-            failures.Add($"measured window {window:F1} s differs from the {metrics.ExpectedWindowSeconds} s duration by more than {WindowToleranceSeconds(metrics.ExpectedWindowSeconds):F1} s (backlog or stall)");
+            server.Add($"measured window {window:F1} s differs from the {metrics.ExpectedWindowSeconds} s duration by more than {WindowToleranceSeconds(metrics.ExpectedWindowSeconds):F1} s (backlog or stall)");
         if (metrics.DeliveryP99Ms is { } p99 && p99 > MaxDeliveryP99Ms)
-            failures.Add($"delivery latency p99 {p99:F0} ms > {MaxDeliveryP99Ms:F0} ms (backlog)");
+            server.Add($"delivery latency p99 {p99:F0} ms > {MaxDeliveryP99Ms:F0} ms (backlog)");
         if (metrics.Lost > 0)
-            failures.Add($"lost = {metrics.Lost} events (lost events bias FIFO latency matching)");
+            server.Add($"lost = {metrics.Lost} events (lost events bias FIFO latency matching)");
 
-        return new GateResult(failures.Count == 0, failures);
+        // Spec: the load generator must stay below 80%, so 80% itself fails.
+        if (metrics.LoadGeneratorCpu >= maxLoadCpu)
+            return new GateResult(RunStatus.InvalidLoadGenerator,
+                [$"load generator CPU {metrics.LoadGeneratorCpu:P0} >= {maxLoadCpu:P0}", .. server]);
+
+        return new GateResult(server.Count == 0 ? RunStatus.Valid : RunStatus.Saturated, server);
     }
 }

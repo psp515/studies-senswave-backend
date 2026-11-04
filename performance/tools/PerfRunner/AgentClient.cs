@@ -15,7 +15,7 @@ public sealed class AgentClient : IDisposable
         var handler = new SocketsHttpHandler();
         if (target.InsecureTls)
             handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
-        _http = new HttpClient(handler) { BaseAddress = target.Agent, Timeout = TimeSpan.FromMinutes(40) };
+        _http = new HttpClient(handler) { BaseAddress = target.Agent, Timeout = TimeSpan.FromMinutes(150) };
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 

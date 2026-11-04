@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Perf.Client.Http;
+using Perf.Core;
 using Perf.Core.Runs;
 
 namespace Perf.Client.Rest;
@@ -12,6 +13,8 @@ namespace Perf.Client.Rest;
 internal sealed class RestApiClient(ApiTarget target) : IApiClient
 {
     internal const string PicoDeviceName = "Pico Controller";
+    /// <summary>The seeded 10x4 dashboard S3 displays (falls back to the first dashboard when absent).</summary>
+    internal const string LargeDashboardName = "Large";
     /// <summary>StartClientErrors.ClientIsRunning: the client of this broker is already started (500 ServerFail).</summary>
     internal const string ClientIsRunning = "ClientIsRunning";
 
@@ -55,7 +58,8 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
         var devices = await Get($"api/v1/devices/display?homeId={homeId}&page=1&size=30", accessToken, ct);
         var deviceId = devices["items"]!.AsArray().First(d => d!["name"]!.GetValue<string>() == PicoDeviceName)!["id"]!.GetValue<string>();
         var dashboards = await Get($"api/v1/devices/dashboards/display?deviceId={deviceId}", accessToken, ct);
-        var dashboardId = dashboards["items"]!.AsArray().First()!["id"]!.GetValue<string>();
+        var items = dashboards["items"]!.AsArray();
+        var dashboardId = (items.FirstOrDefault(d => d!["name"]?.GetValue<string>() == LargeDashboardName) ?? items.First())!["id"]!.GetValue<string>();
 
         return new UserData(email, accessToken, homeId, deviceId, dashboardId);
     }
@@ -68,7 +72,8 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task<ILiveUpdateSubscription> Subscribe(string accessToken, string homeId, Action<string> onDeviceUpdate, CancellationToken ct)
+    public async Task<ILiveUpdateSubscription> Subscribe(string accessToken, string homeId, Action<string> onDeviceUpdate, CancellationToken ct,
+        Action<JsonNode, int>? onRawUpdate = null)
     {
         var connection = new HubConnectionBuilder()
             .WithUrl(new Uri(target.BaseUri, "signalr/liveupdates/live"), options =>
@@ -109,6 +114,13 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
         connection.On<string>("FailedToInitialize", reason => initialized.TrySetException(new InvalidOperationException(reason)));
         connection.On<string, JsonNode>("Update", (updateType, data) =>
         {
+            if (onRawUpdate is not null)
+            {
+                // The hub invocation as it travels in the SignalR JSON protocol (without the record separator).
+                var invocation = new JsonObject { ["type"] = 1, ["target"] = "Update", ["arguments"] = new JsonArray(updateType, data?.DeepClone()) };
+                onRawUpdate(invocation, System.Text.Encoding.UTF8.GetByteCount(invocation.ToJsonString()));
+            }
+
             if (updateType == DeviceTileUpdateType && data?["deviceId"]?.GetValue<string>() is { } deviceId)
                 onDeviceUpdate(deviceId);
         });
@@ -126,6 +138,35 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
         }
 
         return subscription;
+    }
+
+    public async Task<ResponseSample> Sample(Scenario scenario, UserData user, CancellationToken ct)
+    {
+        if (scenario.IsStream())
+            return await StreamSample.Record(this, scenario, Transport.Rest, user, ct);
+
+        var (method, path, body) = scenario switch
+        {
+            Scenario.S1 => (HttpMethod.Get, "api/v1/users", (object?)null),
+            Scenario.S2 => (HttpMethod.Get, $"api/v1/devices/operations/display?deviceId={user.DeviceId}&page=1&size=30", null),
+            Scenario.S3 => (HttpMethod.Get, $"api/v1/devices/dashboards/{user.DashboardId}/display", null),
+            Scenario.S4 => (HttpMethod.Get, "api/v1/legal/terms", null),
+            Scenario.S5 => (HttpMethod.Post, $"api/v1/devices/{user.DeviceId}/tile/action", new { value = true }),
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
+        };
+
+        using var request = new HttpRequestMessage(method, path);
+        if (scenario != Scenario.S4)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", user.AccessToken);
+        if (body is not null)
+            request.Content = JsonContent.Create(body);
+
+        using var response = await _http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+        var json = bytes.Length == 0 ? null : JsonNode.Parse(bytes);
+
+        return new ResponseSample(scenario.ToString(), Transport.Rest.ToString(), $"{method} /{path}", "json", bytes.Length, json);
     }
 
     private async Task<JsonObject> Get(string path, string accessToken, CancellationToken ct)

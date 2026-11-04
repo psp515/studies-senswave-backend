@@ -15,7 +15,7 @@ public sealed class AgentOptions
     public string SeedContainer { get; set; } = "Senswave.Perf.Seed";
     public string DockerSocket { get; set; } = "/var/run/docker.sock";
     public int HealthTimeoutSeconds { get; set; } = 180;
-    public int SeedTimeoutMinutes { get; set; } = 30;
+    public int SeedTimeoutMinutes { get; set; } = 120;
     public Dictionary<Transport, string> ApiContainers { get; set; } = new()
     {
         [Transport.Rest] = "Senswave.Perf.Rest",

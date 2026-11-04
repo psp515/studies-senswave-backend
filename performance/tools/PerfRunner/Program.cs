@@ -1,10 +1,12 @@
+using System.Text.Json;
+using Perf.Core;
 using Perf.Core.Campaigns;
 using PerfRunner;
 using PerfRunner.Tools;
 
 if (args.Length < 2)
 {
-    Console.Error.WriteLine("usage: perfrunner run|prepare <campaign.json> | export|archive <resultsDir>");
+    Console.Error.WriteLine("usage: perfrunner run|prepare|netcheck <campaign.json> | export|archive|knee <resultsDir>");
     return 2;
 }
 
@@ -47,6 +49,17 @@ switch (args[0])
         Console.WriteLine(await agent.Prepare(cts.Token));
         return 0;
     }
+    case "netcheck":
+    {
+        var campaign = CampaignLoader.Parse(await File.ReadAllTextAsync(args[1]));
+        Console.WriteLine(JsonSerializer.Serialize(await NetworkChecker.Measure(campaign.Target, settings.AgentToken, cts.Token), PerfJson.Options));
+        return 0;
+    }
+    case "knee":
+    {
+        await KneeCommand.Run(args[1], cts.Token);
+        return 0;
+    }
     case "export":
     {
         await Export(settings, args[1], traces: args.Contains("--traces"), waitForIngestion: false, cts.Token);
@@ -65,9 +78,9 @@ switch (args[0])
 
 static async Task Export(RunnerSettings settings, string dir, bool traces, bool waitForIngestion, CancellationToken ct)
 {
-    if (settings.PromUrl is null || settings.PromUser is null || settings.GrafanaReadToken is null)
+    if (settings.PromQueryUrl is null || settings.PromUser is null || settings.GrafanaToken is null)
     {
-        Console.WriteLine("GRAFANA_PROM_URL / GRAFANA_PROM_USER / GRAFANA_READ_TOKEN not all set; skipping server export (run 'export' later).");
+        Console.WriteLine("GRAFANA_CLOUD_PROM_URL / GRAFANA_CLOUD_PROM_USER / GRAFANA_CLOUD_TOKEN not all set; skipping server export (run 'export' later).");
         return;
     }
 
@@ -77,13 +90,13 @@ static async Task Export(RunnerSettings settings, string dir, bool traces, bool 
         await Task.Delay(TimeSpan.FromSeconds(60), ct);
     }
 
-    using var prometheus = new PerfRunner.Export.PrometheusClient(settings.PromUrl, settings.PromUser, settings.GrafanaReadToken);
+    using var prometheus = new PerfRunner.Export.PrometheusClient(settings.PromQueryUrl, settings.PromUser, settings.GrafanaToken);
     await new PerfRunner.Export.ServerExporter(prometheus).ExportCampaign(dir, ct);
 
     if (!traces)
         return;
     if (settings.TempoUrl is null || settings.TempoUser is null)
-        Console.WriteLine("GRAFANA_TEMPO_URL / GRAFANA_TEMPO_USER not both set; skipping trace export.");
+        Console.WriteLine("GRAFANA_CLOUD_TEMPO_URL / GRAFANA_CLOUD_TEMPO_USER not both set; skipping trace export.");
     else
-        await new PerfRunner.Export.TraceExporter(settings.TempoUrl, settings.TempoUser, settings.GrafanaReadToken).ExportCampaign(dir, ct);
+        await new PerfRunner.Export.TraceExporter(settings.TempoUrl, settings.TempoUser, settings.GrafanaToken).ExportCampaign(dir, ct);
 }

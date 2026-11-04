@@ -30,7 +30,8 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
         var script = Path.Combine(settings.K6Dir, $"{c.Run.Scenario.ToString().ToLowerInvariant()}.js");
         var args = new List<string> { "run", "--quiet", "--summary-export", summary, "--tag", $"run_id={c.Run.RunId}", "--tag", $"transport={c.Run.Transport}",
             "--tag", $"scenario={c.Run.Scenario}", "--tag", $"rate={c.Run.Rate}" };
-        if (measured && Environment.GetEnvironmentVariable("K6_PROMETHEUS_RW_SERVER_URL") is { Length: > 0 })
+        var remoteWrite = measured && settings.K6RemoteWrite && settings.PromPushUrl is not null;
+        if (remoteWrite)
             args.AddRange(["-o", "experimental-prometheus-rw"]);
         if (measured && c.Campaign.Export.RawK6)
             args.AddRange(["--out", $"csv={Path.Combine(c.RunDir, "k6-raw.csv.gz")}"]);
@@ -40,6 +41,14 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
         args.ForEach(start.ArgumentList.Add);
         foreach (var (key, value) in ToolEnvironment(c, mode, seconds))
             start.Environment[key] = value;
+        if (remoteWrite)
+        {
+            // k6 pushes to the same Grafana Cloud Prometheus as Alloy, with the one Grafana Cloud token.
+            start.Environment["K6_PROMETHEUS_RW_SERVER_URL"] = settings.PromPushUrl;
+            start.Environment["K6_PROMETHEUS_RW_USERNAME"] = settings.PromUser ?? "";
+            start.Environment["K6_PROMETHEUS_RW_PASSWORD"] = settings.GrafanaToken ?? "";
+            start.Environment["K6_PROMETHEUS_RW_TREND_STATS"] = "p(50),p(95),p(99),max";
+        }
 
         Process process;
         try

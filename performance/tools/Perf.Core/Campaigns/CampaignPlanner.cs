@@ -20,7 +20,8 @@ public static class CampaignPlanner
             foreach (var otel in campaign.Otel)
             foreach (var transport in transports)
             foreach (var scenario in campaign.Scenarios)
-            foreach (var rate in campaign.Rates)
+            // Knee mode climbs each scenario's rates from the lowest, so the runner can stop at the first saturated step.
+            foreach (var rate in campaign.StopAfterSaturated ? campaign.RatesFor(scenario).Order().ToArray() : campaign.RatesFor(scenario))
                 runs.Add(new RunSpec(RunId(round, transport, scenario, rate, otel), round, transport, scenario, rate, otel));
         }
 

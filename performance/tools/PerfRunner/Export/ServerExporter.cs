@@ -6,7 +6,7 @@ using Perf.Core.Runs;
 
 namespace PerfRunner.Export;
 
-/// <summary>Writes server/*.csv for every valid run of a campaign. Re-runnable: overwrites the files.</summary>
+/// <summary>Writes server/*.csv for every valid or saturated run of a campaign. Re-runnable: overwrites the files.</summary>
 public sealed class ServerExporter(PrometheusClient prometheus)
 {
     public async Task ExportCampaign(string campaignDir, CancellationToken ct)
@@ -14,7 +14,7 @@ public sealed class ServerExporter(PrometheusClient prometheus)
         foreach (var metaPath in Directory.GetFiles(campaignDir, "meta.json", SearchOption.AllDirectories))
         {
             var meta = JsonSerializer.Deserialize<RunMeta>(await File.ReadAllTextAsync(metaPath, ct), PerfJson.Options)!;
-            if (meta.Status != "valid" || meta.MeasureStartUtc is null || meta.MeasureEndUtc is null)
+            if (!RunStatus.HasMeasurement(meta.Status) || meta.MeasureStartUtc is null || meta.MeasureEndUtc is null)
                 continue;
 
             var serverDir = Path.Combine(Path.GetDirectoryName(metaPath)!, "server");

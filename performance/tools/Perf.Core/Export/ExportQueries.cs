@@ -15,7 +15,9 @@ public static class ExportQueries
 
     public static IReadOnlyList<ExportQuery> For(RunMeta meta)
     {
-        var run = $"run_id=\"{meta.RunId}\"";
+        // Only one API runs at a time and every query is bound to the run's measurement window, so transport selects the run.
+        // run_id is not a metric label (it would create new series every run; see stack/alloy/config.alloy).
+        var run = $"transport=\"{meta.Transport}\"";
         // The Docker health check calls the API over plain HTTP (port 5001); only the HTTPS traffic is the load under test.
         var http = $"{run},url_scheme=\"https\"";
         var container = $"name=\"{ContainerName(meta.Transport)}\"";
@@ -23,9 +25,12 @@ public static class ExportQueries
 
         var list = new List<ExportQuery>();
 
-        foreach (var q in new[] { "0.5", "0.95", "0.99" })
-            list.Add(new("latency.csv", false,
-                $"histogram_quantile({q}, sum by (le) (increase(http_server_request_duration_seconds_bucket{{{http}}}[{window}s])))"));
+        // Raw data only: request counts per histogram bucket over the whole window. Any percentile is computed later in the
+        // analysis from these counts, so no pre-computed (interpolated) quantile is stored.
+        list.Add(new("latency-buckets.csv", false,
+            $"sum by (le) (increase(http_server_request_duration_seconds_bucket{{{http}}}[{window}s]))"));
+        list.Add(new("latency-buckets.csv", false,
+            $"sum by (le, http_response_status_code) (increase(http_server_request_duration_seconds_bucket{{{http}}}[{window}s]))"));
 
         list.Add(new("throughput.csv", true, $"sum(rate(http_server_request_duration_seconds_count{{{http}}}[30s]))"));
         list.Add(new("throughput.csv", true, $"sum by (error_type) (rate(http_server_request_duration_seconds_count{{{http},error_type!=\"\"}}[30s]))"));
@@ -40,7 +45,7 @@ public static class ExportQueries
         list.Add(new("network.csv", true, $"rate(container_network_transmit_bytes_total{{{container}}}[30s])"));
         list.Add(new("connections.csv", true, $"kestrel_active_connections{{{run}}}"));
         list.Add(new("connections.csv", false,
-            $"histogram_quantile(0.95, sum by (le) (increase(kestrel_tls_handshake_duration_seconds_bucket{{{run}}}[{window}s])))"));
+            $"sum by (le) (increase(kestrel_tls_handshake_duration_seconds_bucket{{{run}}}[{window}s]))"));
 
         return list;
     }

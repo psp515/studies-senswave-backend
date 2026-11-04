@@ -19,6 +19,13 @@ public sealed record Campaign(
     int WarmupSeconds,
     int DurationSeconds,
     CampaignUsers Users,
-    CampaignExport Export);
+    CampaignExport Export,
+    IReadOnlyDictionary<string, int[]>? ScenarioRates = null,
+    bool StopAfterSaturated = false)
+{
+    /// <summary>The rates of one scenario: its entry in <see cref="ScenarioRates"/>, otherwise <see cref="Rates"/>.</summary>
+    public int[] RatesFor(Scenario scenario) =>
+        ScenarioRates is not null && ScenarioRates.TryGetValue(scenario.ToString(), out var rates) ? rates : Rates;
+}
 
 public sealed class CampaignException(string message) : Exception(message);

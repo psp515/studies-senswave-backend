@@ -31,6 +31,8 @@ export function options() {
                 rate: RATE,
                 timeUnit: '1s',
                 duration: DURATION,
+                // The pool grows with latency up to 2 VUs per request/s (one connection per VU), so the client caps only at a
+                // latency of 2 s per request. A slower transport therefore opens more connections (README, section 8).
                 preAllocatedVUs: Math.max(20, Math.ceil(RATE * 0.2)),
                 maxVUs: Math.max(100, RATE * 2),
             },

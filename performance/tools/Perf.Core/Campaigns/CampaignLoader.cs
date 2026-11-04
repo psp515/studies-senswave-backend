@@ -28,6 +28,9 @@ public static class CampaignLoader
         Require(campaign.WarmupSeconds >= 0, "warmupSeconds");
         Require(campaign.DurationSeconds > 0, "durationSeconds");
         Require(campaign.Users is { Count: > 0 } && campaign.Users.EmailPattern.Contains("{0}"), "users");
+        Require(campaign.ScenarioRates is null || campaign.ScenarioRates.All(entry =>
+            Enum.TryParse<Scenario>(entry.Key, out var scenario) && campaign.Scenarios.Contains(scenario)
+            && NonEmptyDistinct(entry.Value) && entry.Value.All(r => r > 0)), "scenarioRates");
 
         return campaign with { Export = campaign.Export ?? new CampaignExport(false, false) };
     }

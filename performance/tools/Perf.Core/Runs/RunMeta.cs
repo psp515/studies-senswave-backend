@@ -15,5 +15,5 @@ public sealed record RunMeta(
     DateTimeOffset? WarmupStartUtc,
     DateTimeOffset? MeasureStartUtc,
     DateTimeOffset? MeasureEndUtc,
-    string Status,                 // "valid" | "invalid" | "failed-verification" | "failed"
+    string Status,                 // a RunStatus value: valid | saturated | invalid-loadgen | failed-verification | failed | cancelled
     IReadOnlyList<string> Failures);

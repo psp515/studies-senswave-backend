@@ -1,0 +1,13 @@
+{
+  "target": { "api": "https://perf.example.com:8443", "agent": "https://perf.example.com:9443", "insecureTls": false },
+  "rounds": 1,
+  "transports": ["Rest", "Grpc", "GrpcWeb"],
+  "scenarios": ["S1", "S2", "S3", "S4", "S5", "S6"],
+  "rates": [50, 100, 200, 300, 400, 600, 800, 1000, 1300, 1600],
+  "stopAfterSaturated": true,
+  "otel": [true],
+  "warmupSeconds": 30,
+  "durationSeconds": 90,
+  "users": { "emailPattern": "user{0}@gmail.com", "firstIndex": 1, "count": 2000, "password": "User123456!" },
+  "export": { "traces": false, "rawK6": false }
+}

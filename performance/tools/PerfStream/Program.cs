@@ -30,7 +30,7 @@ try
         setup.Add(TimeSpan.FromTicks(Now() - t0).TotalMilliseconds);
     }
 
-    publisher = s.Scenario == Scenario.S6a ? await MqttPublisher.Connect(s, cts.Token) : new TileActionPublisher(api);
+    publisher = await MqttPublisher.Connect(s, cts.Token);
 }
 catch (Exception ex)
 {
@@ -53,7 +53,7 @@ var start = Now();
 var measureStart = DateTimeOffset.UtcNow;
 var cancelled = false;
 var crashed = false;
-StreamResult result = new(0, 0, 0, 0, []);
+StreamResult result = new(0, 0, 0, 0, [], []);
 var measureEnd = measureStart;
 
 try
@@ -129,6 +129,20 @@ try
     var json = JsonSerializer.Serialize(summary, PerfJson.Options);
     await File.WriteAllTextAsync(s.Out, json);
     Console.WriteLine(json);
+
+    // Raw samples: one row per measured delivery, receive time relative to the first publish and the delivery latency.
+    if (s.RawOut is { Length: > 0 } rawOut && s.Mode == "run")
+    {
+        await using var file = File.Create(rawOut);
+        await using var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.Fastest);
+        await using var writer = new StreamWriter(gzip);
+        await writer.WriteLineAsync("delivered_ms,latency_ms");
+        for (var i = 0; i < result.LatenciesMs.Length; i++)
+        {
+            var deliveredMs = TimeSpan.FromTicks(result.DeliveredAtTicks[i] - start).TotalMilliseconds;
+            await writer.WriteLineAsync(FormattableString.Invariant($"{deliveredMs:F3},{result.LatenciesMs[i]:F3}"));
+        }
+    }
 }
 finally
 {

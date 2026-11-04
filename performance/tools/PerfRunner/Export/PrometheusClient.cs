@@ -11,7 +11,7 @@ public sealed class PrometheusClient : IDisposable
 
     public PrometheusClient(string baseUrl, string user, string token)
     {
-        // GRAFANA_PROM_URL is the query base, e.g. https://prometheus-prod-XX-prod-eu-west-2.grafana.net/api/prom
+        // The query base (GRAFANA_CLOUD_PROM_URL without /push), e.g. https://prometheus-prod-XX-prod-eu-west-2.grafana.net/api/prom
         _http = new HttpClient { BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/") };
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{user}:{token}")));
     }

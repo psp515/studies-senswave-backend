@@ -24,6 +24,8 @@ public sealed class StreamTool(RunnerSettings settings) : IRunTool
         start.Environment["MQTT_USERNAME"] = settings.MqttUser ?? "";
         start.Environment["MQTT_PASSWORD"] = settings.MqttPassword ?? "";
         start.Environment["MQTT_TLS"] = settings.MqttTls ? "true" : "false";
+        if (mode == "run" && c.Campaign.Export.RawK6)
+            start.Environment["RAW_OUT"] = Path.Combine(c.RunDir, "stream-raw.csv.gz");
 
         Process process;
         try
