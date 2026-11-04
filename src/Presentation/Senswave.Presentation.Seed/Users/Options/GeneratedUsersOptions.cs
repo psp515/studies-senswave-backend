@@ -55,12 +55,16 @@ public class GeneratedUsersOptions
                 Devices = new DeviceOptions
                 {
                     Detector = Devices.Detector,
+                    DetectorTopic = string.Format(Devices.DetectorTopic, index),
                     EmptyDevice = Devices.EmptyDevice,
                     PlantMonitor = Devices.PlantMonitor,
                     PicoController = new PicoControllerOptions
                     {
                         Enabled = Devices.PicoController.Enabled,
-                        GlobalTopic = string.Format(Devices.PicoController.GlobalTopic, index)
+                        GlobalTopic = string.Format(Devices.PicoController.GlobalTopic, index),
+                        ExtraOperations = Devices.PicoController.ExtraOperations,
+                        LargeDashboardRows = Devices.PicoController.LargeDashboardRows,
+                        LargeDashboardColumns = Devices.PicoController.LargeDashboardColumns
                     }
                 }
             };

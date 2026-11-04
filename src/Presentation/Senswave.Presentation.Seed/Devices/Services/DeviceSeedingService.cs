@@ -19,6 +19,7 @@ using Senswave.Devices.Domain.Widgets.Types.Radio.Model;
 using Senswave.Devices.Domain.Widgets.Types.Slider;
 using Senswave.Presentation.Seed.Devices.Clients;
 using Senswave.Presentation.Seed.Devices.Interfaces;
+using Senswave.Presentation.Seed.Devices.Options;
 using Senswave.Presentation.Seed.Devices.Types;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -54,7 +55,7 @@ public class DeviceSeedingService(
         }
     }
 
-    public async Task<Result<DeviceOperations>> SeedDetector(string accessToken, Guid homeId)
+    public async Task<Result<DeviceOperations>> SeedDetector(string accessToken, Guid homeId, string topic)
     {
         try
         {
@@ -72,7 +73,7 @@ public class DeviceSeedingService(
                 DeviceId = deviceRespnse.Id,
                 Name = "Detector State",
                 Type = OperationType.Boolean.FromOperationType(),
-                Topic = "detector/state",
+                Topic = topic,
                 Configuration = new()
                 {
                     ["jsonNames"]=new JsonArray("detected"),
@@ -97,7 +98,7 @@ public class DeviceSeedingService(
                 DeviceId = deviceRespnse.Id,
                 Name = "Detector State",
                 Type = OperationType.Boolean.FromOperationType(),
-                Topic = "detector/state",
+                Topic = topic,
                 Configuration = new()
                 {
                     ["jsonNames"]=new JsonArray("detected"),
@@ -118,8 +119,10 @@ public class DeviceSeedingService(
 
     #region Pico Controller
 
-    public async Task<Result<DeviceOperations>> SeedPicoController(string accessToken, Guid homeId, Guid? roomId, string topic)
+    public async Task<Result<DeviceOperations>> SeedPicoController(string accessToken, Guid homeId, Guid? roomId, PicoControllerOptions options)
     {
+        var topic = options.GlobalTopic;
+
         try
         {
             var createDeviceRquest = new CreateDeviceRequest
@@ -184,6 +187,20 @@ public class DeviceSeedingService(
             await AddBrightnessDisplay(accessToken, quickActionsDashboardResponse.Id, brightnessOperation);
 
             await AddStateSwitch(accessToken, quickActionsDashboardResponse.Id, stateOperation);
+
+            // Performance-test data: more operations (S2 lists them) and one large, full dashboard (S3 displays it).
+            List<SeededOperation> operations =
+            [
+                new(stateOperation, OperationType.Boolean),
+                new(brightnessOperation, OperationType.Number, Max: 1),
+                new(modeOperation, OperationType.Options, Options: ControllerModeNames),
+            ];
+
+            for (var i = 1; i <= options.ExtraOperations; i++)
+                operations.Add(await AddExtraOperation(accessToken, deviceRespnse.Id, topic, i));
+
+            if (options.LargeDashboardRows > 0)
+                await AddLargeDashboard(accessToken, deviceRespnse.Id, options.LargeDashboardRows, options.LargeDashboardColumns, operations);
 
             return Result<DeviceOperations>.Success(deviceOperations);
         }
@@ -518,6 +535,152 @@ public class DeviceSeedingService(
 
         await dashboardClient.SetWidgetOnDashboard(accessToken, dashboardId, setDeadButtonWidgetOnDashboard);
     }
+
+    #endregion
+
+    #region Performance test data
+
+    private const string LargeDashboardName = "Large";
+
+    private static readonly string[] ExtraOptionNames = ["off", "low", "medium", "high"];
+
+    private static readonly string[] ControllerModeNames = ["white", "color", "rgb", "loading"];
+
+    private const double ExtraNumberMax = 100;
+
+    /// <param name="Max">Upper bound of a number operation (lower bound 0): sets the slider step and the button value.</param>
+    /// <param name="Options">Option names of an options operation: a radio widget must offer exactly values the operation accepts.</param>
+    private sealed record SeededOperation(Guid Id, OperationType Type, double Max = 0, string[]? Options = null);
+
+    /// <summary>
+    /// One extra controller channel; the type rotates number, boolean, options, hex color. All channels share their own
+    /// topic (&lt;topic&gt;/channels): a message on a topic is processed by every operation of that topic, so the extra
+    /// channels must not join the controller topic that the S5 / S6 messages travel on.
+    /// </summary>
+    private async Task<SeededOperation> AddExtraOperation(string accessToken, Guid deviceId, string topic, int index)
+    {
+        var type = (index % 4) switch
+        {
+            1 => OperationType.Number,
+            2 => OperationType.Boolean,
+            3 => OperationType.Options,
+            _ => OperationType.HexColor,
+        };
+
+        var configuration = type switch
+        {
+            OperationType.Number => new JsonObject
+            {
+                ["jsonNames"] = new JsonArray($"channel_{index}", "level"),
+                ["isJson"] = true,
+                ["min"] = 0,
+                ["max"] = ExtraNumberMax
+            },
+            OperationType.Boolean => new JsonObject
+            {
+                ["jsonNames"] = new JsonArray($"channel_{index}", "power"),
+                ["isJson"] = true
+            },
+            OperationType.Options => new JsonObject
+            {
+                ["jsonNames"] = new JsonArray($"channel_{index}", "preset"),
+                ["isJson"] = true,
+                ["options"] = new JsonArray(ExtraOptionNames
+                    .Select((name, value) => (JsonNode)new JsonObject { ["name"] = name, ["value"] = value })
+                    .ToArray())
+            },
+            _ => new JsonObject
+            {
+                ["jsonNames"] = new JsonArray($"channel_{index}", "color"),
+                ["isJson"] = true
+            },
+        };
+
+        var request = new CreateOperationRequest
+        {
+            DeviceId = deviceId,
+            Name = $"Channel {index} {type}",
+            Type = type.FromOperationType(),
+            Topic = $"{topic}/channels",
+            Configuration = configuration
+        };
+
+        var response = await operationClient.CreateOperation(accessToken, request);
+
+        return type switch
+        {
+            OperationType.Number => new SeededOperation(response.Id, type, Max: ExtraNumberMax),
+            OperationType.Options => new SeededOperation(response.Id, type, Options: ExtraOptionNames),
+            _ => new SeededOperation(response.Id, type),
+        };
+    }
+
+    /// <summary>
+    /// A rows x columns dashboard with one 1x1 widget in every cell. Operations are reused round-robin, and number
+    /// operations alternate between slider, display and button, so the dashboard mixes every widget type.
+    /// </summary>
+    private async Task AddLargeDashboard(string accessToken, Guid deviceId, int rows, int columns, List<SeededOperation> operations)
+    {
+        var dashboardRequest = new CreateDashboardRequest
+        {
+            DeviceId = deviceId,
+            Name = LargeDashboardName,
+            Icon = "grid-outline",
+            Configuration = new()
+            {
+                ["columns"] = columns,
+                ["rows"] = rows
+            }
+        };
+
+        var dashboard = await dashboardClient.CreateDashboard(accessToken, dashboardRequest);
+
+        var numberWidgets = 0;
+        for (var cell = 0; cell < rows * columns; cell++)
+        {
+            var operation = operations[cell % operations.Count];
+
+            var (widgetType, configuration) = operation.Type switch
+            {
+                OperationType.Boolean => (WidgetType.Switch, new JsonObject()),
+                OperationType.Options => (WidgetType.Radio, RadioConfiguration(operation.Options!)),
+                OperationType.HexColor => (WidgetType.Color, ToJson(new ColorWidgetConfiguration())),
+                _ => (numberWidgets++ % 3) switch
+                {
+                    0 => (WidgetType.Slider, ToJson(new SliderWidgetConfiguration { Step = operation.Max / 100 })),
+                    1 => (WidgetType.Display, new JsonObject { ["unit"] = "%" }),
+                    _ => (WidgetType.Button, ToJson(new ButtonWidgetConfiguration { Value = JsonValue.Create(operation.Max / 2) })),
+                },
+            };
+
+            var widget = await widgetClient.CreateWidget(accessToken, new CreateWidgetRequest
+            {
+                Name = $"Cell {cell + 1} {widgetType}",
+                Type = widgetType.FromWidgetType(),
+                Configuration = configuration,
+                OperationId = operation.Id
+            });
+
+            await dashboardClient.SetWidgetOnDashboard(accessToken, dashboard.Id, new SetWidgetOnDashboardRequest
+            {
+                Row = cell / columns,
+                Column = cell % columns,
+                RowSpan = 1,
+                ColumnSpan = 1,
+                WidgetId = widget.Id
+            });
+        }
+    }
+
+    /// <summary>One radio option per option of the operation (names are short enough for the 12-character display name).</summary>
+    private static JsonObject RadioConfiguration(string[] optionNames) => ToJson(new RadioWidgetConfiguration
+    {
+        Options = optionNames
+            .Select(name => new RadioOption { DisplayName = name, OptionName = name, Icon = "ellipse-outline" })
+            .ToList()
+    });
+
+    private static JsonObject ToJson<T>(T value) => JsonSerializer.Deserialize<JsonObject>(JsonSerializer.Serialize(value))!;
 
     #endregion
 
