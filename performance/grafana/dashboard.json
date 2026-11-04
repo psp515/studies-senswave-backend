@@ -26,23 +26,6 @@
   "templating": {
     "list": [
       {
-        "name": "run_id",
-        "label": "run_id",
-        "type": "textbox",
-        "query": ".*",
-        "current": {
-          "text": ".*",
-          "value": ".*"
-        },
-        "options": [
-          {
-            "selected": true,
-            "text": ".*",
-            "value": ".*"
-          }
-        ]
-      },
-      {
         "name": "transport",
         "label": "transport",
         "type": "custom",
@@ -105,7 +88,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{run_id=~\"$run_id\",url_scheme=\"https\"}[1m])))",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{transport=~\"$transport\",url_scheme=\"https\"}[1m])))",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -114,7 +97,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{run_id=~\"$run_id\",url_scheme=\"https\"}[1m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{transport=~\"$transport\",url_scheme=\"https\"}[1m])))",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -123,7 +106,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{run_id=~\"$run_id\",url_scheme=\"https\"}[1m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{transport=~\"$transport\",url_scheme=\"https\"}[1m])))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -155,7 +138,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (transport) (rate(http_server_request_duration_seconds_count{run_id=~\"$run_id\",url_scheme=\"https\"}[1m]))",
+          "expr": "sum by (transport) (rate(http_server_request_duration_seconds_count{transport=~\"$transport\",url_scheme=\"https\"}[1m]))",
           "legendFormat": "{{transport}}",
           "refId": "A"
         }
@@ -187,7 +170,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "1000 * sum(rate(process_cpu_time_seconds_total{run_id=~\"$run_id\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{run_id=~\"$run_id\",url_scheme=\"https\"}[1m]))",
+          "expr": "1000 * sum(rate(process_cpu_time_seconds_total{transport=~\"$transport\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{transport=~\"$transport\",url_scheme=\"https\"}[1m]))",
           "legendFormat": "cpu ms/request",
           "refId": "A"
         }
@@ -219,7 +202,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(dotnet_gc_heap_total_allocated_bytes_total{run_id=~\"$run_id\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{run_id=~\"$run_id\",url_scheme=\"https\"}[1m]))",
+          "expr": "sum(rate(dotnet_gc_heap_total_allocated_bytes_total{transport=~\"$transport\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{transport=~\"$transport\",url_scheme=\"https\"}[1m]))",
           "legendFormat": "bytes/request",
           "refId": "A"
         }

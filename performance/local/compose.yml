@@ -1,12 +1,12 @@
 # Local phase: the VM stack plus stand-ins for Azure Flexible Server and the external broker.
-#   docker compose -f performance/local/compose.yml --env-file performance/stack/.env --profile seed up --no-start
-#   docker compose -f performance/local/compose.yml --env-file performance/stack/.env up -d database mqtt
+#   docker compose -f performance/local/compose.yml --env-file performance/.env --profile seed up --no-start
+#   docker compose -f performance/local/compose.yml --env-file performance/.env up -d database mqtt
 name: senswave-perf
 
 include:
   - path: ../stack/compose.yml
-    # alloy-defaults.env.local first: local-only placeholders so Alloy starts without Grafana Cloud; stack/.env wins when it sets them.
-    env_file: [ ./alloy-defaults.env.local, ../stack/.env ]
+    # alloy-defaults.env.local first: local-only placeholders so Alloy starts without Grafana Cloud; performance/.env wins when it sets them.
+    env_file: [ ./alloy-defaults.env.local, ../.env ]
 
 services:
   database:

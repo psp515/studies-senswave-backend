@@ -1,7 +1,7 @@
 name: senswave-perf
 
-# VM stack (Spec E). Create everything once, start nothing:
-#   docker compose --profile seed up --no-start
+# VM stack (Spec E). Settings: performance/.env (template: performance/.env.template). Create everything once, start nothing:
+#   docker compose -f performance/stack/compose.yml --env-file performance/.env --profile seed up --no-start
 # PerfAgent then starts exactly one API container per run.
 
 x-api: &api
@@ -106,7 +106,7 @@ services:
       PostgreSql__Password: ${POSTGRES_PASSWORD}
       PostgreSql__Database: senswave_seed
       Seed__Instance: https://${PERF_API_HOST:-api}:8443/api
-      Seed__GeneratedUsers__Count: ${SEED_USER_COUNT:-100}
+      Seed__GeneratedUsers__Count: ${SEED_USER_COUNT:-2000}
       Seed__GeneratedUsers__EmailPattern: user{0}@gmail.com
       Seed__GeneratedUsers__Password: User123456!
       Seed__GeneratedUsers__Broker__Create: "true"
@@ -116,6 +116,13 @@ services:
       Seed__GeneratedUsers__Broker__Username: ${SEED_BROKER_USERNAME}
       Seed__GeneratedUsers__Broker__Password: ${SEED_BROKER_PASSWORD}
       Seed__GeneratedUsers__Devices__PicoController__GlobalTopic: perf/controller/{0}
+      Seed__GeneratedUsers__Devices__DetectorTopic: perf/detector/{0}
+      # Scenario data: 4 + 26 = 30 controller operations (S2 lists 30; the per-device limit is 30) and a 10x4
+      # "Large" dashboard with 40 widgets of every type (S3 displays it).
+      Seed__GeneratedUsers__Devices__PicoController__ExtraOperations: "26"
+      Seed__GeneratedUsers__Devices__PicoController__LargeDashboardRows: "10"
+      Seed__GeneratedUsers__Devices__PicoController__LargeDashboardColumns: "4"
+      Seed__Parallelism: ${SEED_PARALLELISM:-8}
       Seed__DefaultUser__Broker__Url: ${SEED_BROKER_URL}
       Seed__DefaultUser__Broker__Port: ${SEED_BROKER_PORT}
       Seed__DefaultUser__Broker__Username: ${SEED_BROKER_USERNAME}
@@ -173,7 +180,7 @@ services:
       GRAFANA_CLOUD_OTLP_USER: ${GRAFANA_CLOUD_OTLP_USER}
       GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL}
       GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER}
-      GRAFANA_CLOUD_WRITE_TOKEN: ${GRAFANA_CLOUD_WRITE_TOKEN}
+      GRAFANA_CLOUD_TOKEN: ${GRAFANA_CLOUD_TOKEN}
 
 networks:
   perf:
