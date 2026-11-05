@@ -23,7 +23,9 @@ public static class CampaignLoader
         Require(campaign.Rounds > 0, "rounds");
         Require(NonEmptyDistinct(campaign.Transports), "transports");
         Require(NonEmptyDistinct(campaign.Scenarios), "scenarios");
-        Require(NonEmptyDistinct(campaign.Rates) && campaign.Rates.All(r => r > 0), "rates");
+        // A knee search picks its own rates; every other campaign lists them.
+        Require(campaign.Knee is not null || (NonEmptyDistinct(campaign.Rates) && campaign.Rates.All(r => r > 0)), "rates");
+        Require(campaign.Knee is null || (campaign.Knee.Precision > 0 && campaign.Knee.Max > campaign.Knee.Precision), "knee");
         Require(NonEmptyDistinct(campaign.Otel), "otel");
         Require(campaign.WarmupSeconds >= 0, "warmupSeconds");
         Require(campaign.DurationSeconds > 0, "durationSeconds");
@@ -32,7 +34,7 @@ public static class CampaignLoader
             Enum.TryParse<Scenario>(entry.Key, out var scenario) && campaign.Scenarios.Contains(scenario)
             && NonEmptyDistinct(entry.Value) && entry.Value.All(r => r > 0)), "scenarioRates");
 
-        return campaign with { Export = campaign.Export ?? new CampaignExport(false, false) };
+        return campaign with { Export = campaign.Export ?? new CampaignExport(false, false), Rates = campaign.Rates ?? [] };
     }
 
     private static bool NonEmptyDistinct<T>(T[]? values) => values is { Length: > 0 } && values.Distinct().Count() == values.Length;

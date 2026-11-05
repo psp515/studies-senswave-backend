@@ -3,11 +3,10 @@
   "rounds": 1,
   "transports": ["Rest", "Grpc", "GrpcWeb"],
   "scenarios": ["S1", "S2", "S3", "S4", "S5", "S6"],
-  "rates": [50, 100, 200, 300, 400, 600, 800, 1000, 1300, 1600],
-  "stopAfterSaturated": true,
+  "knee": { "max": 1000, "precision": 50 },
   "otel": [true],
   "warmupSeconds": 30,
-  "durationSeconds": 90,
+  "durationSeconds": 60,
   "users": { "emailPattern": "user{0}@gmail.com", "firstIndex": 1, "count": 2000, "password": "User123456!" },
   "export": { "traces": false, "rawK6": false }
 }

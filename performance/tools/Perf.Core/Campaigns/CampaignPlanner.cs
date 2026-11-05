@@ -2,6 +2,12 @@ namespace Perf.Core.Campaigns;
 
 public sealed record RunSpec(string RunId, int Round, Transport Transport, Scenario Scenario, int Rate, bool Otel);
 
+/// <summary>One transport and scenario of a round: the unit of a knee search.</summary>
+public sealed record RunPair(int Round, Transport Transport, Scenario Scenario, bool Otel)
+{
+    public RunSpec At(int rate) => new(CampaignPlanner.RunId(Round, Transport, Scenario, rate, Otel), Round, Transport, Scenario, rate, Otel);
+}
+
 public static class CampaignPlanner
 {
     /// <summary>
@@ -28,6 +34,25 @@ public static class CampaignPlanner
         return runs;
     }
 
+    /// <summary>The (round, OTel, transport, scenario) pairs in the same order as <see cref="Expand"/>, without rates.</summary>
+    public static IReadOnlyList<RunPair> Pairs(Campaign campaign, int seed)
+    {
+        var pairs = new List<RunPair>();
+
+        for (var round = 1; round <= campaign.Rounds; round++)
+        {
+            var random = new Random(unchecked(seed * 31 + round));
+            var transports = Shuffle(campaign.Transports, random);
+
+            foreach (var otel in campaign.Otel)
+            foreach (var transport in transports)
+            foreach (var scenario in campaign.Scenarios)
+                pairs.Add(new RunPair(round, transport, scenario, otel));
+        }
+
+        return pairs;
+    }
+
     private static Transport[] Shuffle(Transport[] source, Random random)
     {
         var items = (Transport[])source.Clone();
@@ -40,6 +65,6 @@ public static class CampaignPlanner
         return items;
     }
 
-    private static string RunId(int round, Transport transport, Scenario scenario, int rate, bool otel) =>
+    public static string RunId(int round, Transport transport, Scenario scenario, int rate, bool otel) =>
         $"r{round}-{transport.ToString().ToLowerInvariant()}-{scenario.ToString().ToLowerInvariant()}-{rate}-{(otel ? "otel" : "nootel")}";
 }

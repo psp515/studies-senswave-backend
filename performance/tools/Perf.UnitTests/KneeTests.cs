@@ -100,4 +100,75 @@ public class KneeTests
 
     [Fact]
     public void MbpsUsesDecimalMegabits() => Assert.Equal(80, NetworkStats.Mbps(10_000_000, TimeSpan.FromSeconds(1)), 3);
+
+    /// <summary>Runs a search against a server that sustains everything up to <paramref name="capacity"/>.</summary>
+    private static (List<int> Steps, KneeSearch Search) Bisect(int capacity, int max = 2000, int precision = 50)
+    {
+        var search = new KneeSearch(max, precision);
+        var steps = new List<int>();
+        while (search.Next is { } rate)
+        {
+            steps.Add(rate);
+            search.Record(rate, rate <= capacity);
+        }
+        return (steps, search);
+    }
+
+    [Fact]
+    public void BisectionHalvesTowardsTheKneeInPrecisionSteps()
+    {
+        var (steps, search) = Bisect(capacity: 1370);
+
+        Assert.Equal([2000, 1000, 1500, 1250, 1350, 1400], steps);
+        Assert.Equal(1350, search.Knee);
+        Assert.False(search.AtLeastMax);
+    }
+
+    [Fact]
+    public void SustainedMaxEndsTheSearchAtOnce()
+    {
+        var (steps, search) = Bisect(capacity: 5000);
+
+        Assert.Equal([2000], steps);
+        Assert.True(search.AtLeastMax);
+    }
+
+    [Fact]
+    public void NothingSustainedGivesKneeZero()
+    {
+        var (steps, search) = Bisect(capacity: 10);
+
+        Assert.Equal([2000, 1000, 500, 250, 100, 50], steps);
+        Assert.Equal(0, search.Knee);
+    }
+
+    [Theory]
+    [InlineData(80)]
+    [InlineData(420)]
+    [InlineData(999)]
+    [InlineData(1951)]
+    public void KneeIsWithinPrecisionOfTheCapacityAndStepsNeverRepeat(int capacity)
+    {
+        var (steps, search) = Bisect(capacity);
+
+        Assert.InRange(capacity - search.Knee, 0, 50);
+        Assert.Equal(steps.Count, steps.Distinct().Count());
+        Assert.All(steps, rate => Assert.Equal(0, rate % 50));
+        Assert.True(steps.Count <= 7);
+    }
+
+    [Fact]
+    public void PairsFollowTheShuffledTransportOrderAndRunIdsMatchExpand()
+    {
+        var campaign = new Campaign(
+            new CampaignTarget(new Uri("https://localhost:8443"), new Uri("https://localhost:9443"), true),
+            2, [Transport.Rest, Transport.Grpc, Transport.GrpcWeb], [Scenario.S1, Scenario.S6], [100], [true], 30, 60,
+            new CampaignUsers("user{0}@gmail.com", 1, 100, "x"), new CampaignExport(false, false));
+
+        var pairs = CampaignPlanner.Pairs(campaign, 7);
+        var runs = CampaignPlanner.Expand(campaign, 7);
+
+        Assert.Equal(runs.Select(r => (r.Round, r.Transport, r.Scenario)), pairs.Select(p => (p.Round, p.Transport, p.Scenario)));
+        Assert.Equal(runs[0].RunId, pairs[0].At(100).RunId);
+    }
 }

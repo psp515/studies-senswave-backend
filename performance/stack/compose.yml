@@ -36,6 +36,9 @@ x-api-environment: &api-environment
   PostgreSql__Username: ${POSTGRES_USER}
   PostgreSql__Password: ${POSTGRES_PASSWORD}
   PostgreSql__Database: senswave_run
+  # Npgsql pool of the API under test (default 100). The database's max_connections must exceed it plus the agent
+  # and health checks (local: 400 in local/compose.yml; Azure: check the Flexible Server tier).
+  PostgreSql__MaxPoolSize: "250"
   Diagnostics__OpenTelemetry__Enabled: "true"
   # Trust store for outbound TLS to the broker: local = the Mosquitto stand-in cert, Azure = system CAs.
   SSL_CERT_FILE: ${API_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}

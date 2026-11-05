@@ -43,6 +43,25 @@ public class CampaignLoaderTests
         Assert.Equal([100, 500, 1000], campaign.RatesFor(Scenario.S1));
     }
 
+    [Fact]
+    public void KneeCampaignNeedsNoRates()
+    {
+        var campaign = CampaignLoader.Parse(Valid.Replace("\"rates\": [100, 500, 1000],", "\"knee\": { \"max\": 2000, \"precision\": 50 },"));
+
+        Assert.Equal(new CampaignKnee(2000, 50), campaign.Knee);
+        Assert.Empty(campaign.Rates);
+    }
+
+    [Theory]
+    [InlineData("{ \"max\": 2000, \"precision\": 0 }")]
+    [InlineData("{ \"max\": 50, \"precision\": 50 }")]
+    public void RejectsInvalidKnee(string knee)
+    {
+        var ex = Assert.Throws<CampaignException>(() => CampaignLoader.Parse(Valid.Replace("\"rates\": [100, 500, 1000],", $"\"knee\": {knee},")));
+
+        Assert.Contains("knee", ex.Message);
+    }
+
     [Theory]
     [InlineData("{ \"S9\": [10] }")]          // unknown scenario
     [InlineData("{ \"S4\": [10] }")]          // scenario not in the campaign

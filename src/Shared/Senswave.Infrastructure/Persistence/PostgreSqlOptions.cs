@@ -12,5 +12,9 @@ public class PostgreSqlOptions
 
     public string ErrorDetail { get; set; } = "true";
 
-    public string ConnectionString => $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};Include Error Detail={ErrorDetail};";
+    /// <summary>Npgsql connection pool size; null keeps the Npgsql default (100).</summary>
+    public int? MaxPoolSize { get; set; }
+
+    public string ConnectionString => $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};Include Error Detail={ErrorDetail};"
+        + (MaxPoolSize is { } size ? $"Maximum Pool Size={size};" : string.Empty);
 }
