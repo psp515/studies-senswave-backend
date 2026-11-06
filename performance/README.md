@@ -480,10 +480,10 @@ results/<campaign-file>-<yyyyMMdd-HHmm>/
 | `agent-logs.txt` | API container log, last 2000 lines only (the start of the attempt can be cut). |
 | `server/latency-buckets.csv` | Raw histogram: request count per `http_server_request_duration_seconds_bucket` boundary (`le`) over the whole measurement window, in total and by status code. No percentile is pre-computed; the analysis derives them from the counts. |
 | `server/throughput.csv` | Requests per second, by `error_type` and by `http_response_status_code`. |
-| `server/cpu.csv`, `memory.csv` | Container CPU and working set (cAdvisor), process CPU (OTel). |
-| `server/gc.csv` | Allocated bytes, GC counts, ThreadPool queue length. |
+| `server/cpu.csv`, `memory.csv` | Container CPU and working set (cAdvisor, empty on Docker Desktop), process CPU and working set (OTel). |
+| `server/gc.csv` | Allocated bytes, GC counts by generation, GC pause time, ThreadPool queue length. |
 | `server/network.csv` | Container rx/tx bytes. |
-| `server/connections.csv` | `kestrel.active_connections` over time, TLS handshake duration bucket counts. |
+| `server/connections.csv` | `kestrel.active_connections` and `kestrel.queued_requests` over time, TLS handshake duration bucket counts. |
 | `server/db.csv` | `senswave_run`: transactions and rollbacks per second, blocks read and hit, deadlocks, temp bytes, connections, sessions by state, locks by mode, size. |
 | `server/traces.jsonl` | Up to 500 traces for the window (optional). |
 
@@ -531,8 +531,8 @@ Grafana is for live monitoring; thesis data comes from the exported files.
 | Source | Components | Destination |
 |---|---|---|
 | App OTLP (metrics, traces) on 4317 / 4318 | `otelcol.receiver.otlp` → `otelcol.processor.transform` (copies `senswave.transport` onto every data point as `transport`; `run_id` is not copied, see below) → `otelcol.processor.batch` | Grafana Cloud OTLP (`GRAFANA_CLOUD_OTLP_ENDPOINT`) |
-| Container CPU, memory, network, OOM kills, restarts | `prometheus.exporter.cadvisor` (`docker_only`) → `prometheus.scrape` (10 s) → `prometheus.relabel` | Prometheus remote write (`GRAFANA_CLOUD_PROM_URL`) |
-| Host CPU (including steal), memory, disk, network | `prometheus.exporter.unix` → `prometheus.scrape` (10 s) → `prometheus.relabel` | Prometheus remote write |
+| Container CPU, memory, network, OOM kills | `prometheus.exporter.cadvisor` (`docker_only`) → `prometheus.scrape` (10 s) → `prometheus.relabel` (allowlist) | Prometheus remote write (`GRAFANA_CLOUD_PROM_URL`) |
+| Host CPU (including steal), memory, network (without Docker's virtual interfaces) | `prometheus.exporter.unix` → `prometheus.scrape` (10 s) → `prometheus.relabel` (allowlist) | Prometheus remote write |
 | PostgreSQL activity of `senswave_run`: transactions, buffer cache, sessions by state, locks, size | `prometheus.exporter.postgres` (`POSTGRES_EXPORTER_DSN`) → `prometheus.scrape` (10 s) → `prometheus.relabel` (keeps only these metrics, drops `datid`) | Prometheus remote write |
 
 ### Labels

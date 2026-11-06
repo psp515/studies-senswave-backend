@@ -61,6 +61,15 @@ public class ExportQueriesTests
         });
     }
 
+    [Theory]
+    [InlineData("gc.csv", "dotnet_gc_heap_allocated_bytes_total")]
+    [InlineData("gc.csv", "dotnet_gc_pause_time_seconds_total")]
+    [InlineData("gc.csv", "dotnet_thread_pool_queue_length_total")]
+    [InlineData("memory.csv", "dotnet_process_memory_working_set_bytes")]
+    [InlineData("connections.csv", "kestrel_queued_requests")]
+    public void RuntimeMetricsUseTheNamesGrafanaCloudStores(string file, string metric) =>
+        Assert.Contains(ExportQueries.For(Meta()), q => q.File == file && q.PromQl.Contains(metric) && q.PromQl.Contains("transport=\"Grpc\""));
+
     [Fact]
     public void DatabaseQueriesSelectTheDatabaseUnderTest()
     {

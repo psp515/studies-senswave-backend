@@ -202,7 +202,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(rate(dotnet_gc_heap_total_allocated_bytes_total{transport=~\"$transport\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{transport=~\"$transport\",url_scheme=\"https\"}[1m]))",
+          "expr": "sum(rate(dotnet_gc_heap_allocated_bytes_total{transport=~\"$transport\"}[1m])) / sum(rate(http_server_request_duration_seconds_count{transport=~\"$transport\",url_scheme=\"https\"}[1m]))",
           "legendFormat": "bytes/request",
           "refId": "A"
         }

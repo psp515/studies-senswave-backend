@@ -1,5 +1,5 @@
 {
-  "target": { "api": "https://perf.example.com:8443", "agent": "https://perf.example.com:9443", "insecureTls": false },
+  "target": { "api": "https://perf.senswavelabs.com:8443", "agent": "https://perf.senswavelabs.com:9443", "insecureTls": false },
   "rounds": 1,
   "transports": ["Rest", "Grpc", "GrpcWeb"],
   "scenarios": ["S1", "S2", "S3", "S4", "S5", "S6"],

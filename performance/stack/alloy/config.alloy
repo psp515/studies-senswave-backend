@@ -104,6 +104,20 @@ prometheus.relabel "db" {
 }
 
 prometheus.relabel "env" {
+  // Only what the export, the dashboard or a diagnosis needs: the exporters emit thousands of series (active-series limit).
+  rule {
+    source_labels = ["__name__"]
+    regex         = "container_(cpu_usage_seconds_total|memory_working_set_bytes|network_(receive|transmit)_bytes_total|oom_events_total)|node_(cpu_seconds_total|memory_MemAvailable_bytes|memory_MemTotal_bytes|network_.+)|pg_.+"
+    action        = "keep"
+  }
+
+  // Docker creates a new veth interface for every recreated container, and each would add new node_network_* series.
+  rule {
+    source_labels = ["__name__", "device"]
+    regex         = "node_network_.+;(veth.+|br-.+|docker.+|lo)"
+    action        = "drop"
+  }
+
   rule {
     target_label = "env"
     replacement  = sys.env("PERF_ENV")
