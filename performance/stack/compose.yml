@@ -169,6 +169,7 @@ services:
     memswap_limit: 1g
     privileged: true            # cAdvisor needs cgroup and device access
     cgroup: host                # otherwise cAdvisor only sees Alloy's own cgroup
+    pid: host
     networks: [ perf ]
     command: [ "run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data" ]
     volumes:
@@ -190,4 +191,3 @@ services:
 networks:
   perf:
     name: senswave-perf
-    
