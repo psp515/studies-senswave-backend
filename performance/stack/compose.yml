@@ -1,0 +1,196 @@
+name: senswave-perf
+
+# VM stack (Spec E). Settings: performance/.env (template: performance/.env.template). Create everything once, start nothing:
+#   docker compose -f performance/stack/compose.yml --env-file performance/.env --profile seed up --no-start
+# PerfAgent then starts exactly one API container per run.
+
+x-api: &api
+  image: senswave-perf-api
+  restart: "no"
+  cpuset: ${API_CPUSET:-2-3}
+  cpus: ${API_CPUS:-2}
+  mem_limit: ${API_MEMORY:-4g}
+  memswap_limit: ${API_MEMORY:-4g}
+  pids_limit: 512
+  ports:
+    - ${API_BIND:-0.0.0.0}:${API_PORT:-8443}:8443
+  volumes:
+    - ${CERT_DIR:-../../docker/https}:/https:ro
+    - ./api/appsettings.Production.json:/app/appsettings.Production.json:ro
+  labels:
+    senswave.perf.role: api
+  healthcheck:
+    test: ["CMD-SHELL", "curl -s http://localhost:5001/api/health | grep -q '\"status\":\"Healthy\"'"]
+    interval: 2s
+    timeout: 2s
+    retries: 60
+    start_period: 5s
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_URLS: https://+:8443;http://+:5001
+  ASPNETCORE_Kestrel__Certificates__Default__Path: /https/senswave.api.pfx
+  ASPNETCORE_Kestrel__Certificates__Default__Password: ${API_CERTIFICATE_PASSWORD}
+  PostgreSql__Host: ${POSTGRES_HOST}
+  PostgreSql__Port: ${POSTGRES_PORT:-5432}
+  PostgreSql__Username: ${POSTGRES_USER}
+  PostgreSql__Password: ${POSTGRES_PASSWORD}
+  PostgreSql__Database: senswave_run
+  # Npgsql pool of the API under test (default 100). The database's max_connections must exceed it plus the agent
+  # and health checks (local: 400 in local/compose.yml; Azure: check the Flexible Server tier).
+  PostgreSql__MaxPoolSize: "250"
+  Diagnostics__OpenTelemetry__Enabled: "true"
+  # Trust store for outbound TLS to the broker: local = the Mosquitto stand-in cert, Azure = system CAs.
+  SSL_CERT_FILE: ${API_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+  OTEL_RESOURCE_ATTRIBUTES: run_id=none,deployment.environment=${PERF_ENV:?PERF_ENV must be set (local | azure)}
+
+services:
+  api-rest:
+    <<: *api
+    build:
+      context: ../..
+      dockerfile: src/Presentation/Senswave.Presentation.Api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+        BUILD_IMAGE_CONFIGURATION: release
+      labels:
+        senswave.git-sha: ${GIT_SHA:-unknown}
+    container_name: Senswave.Perf.Rest
+    networks:
+      perf:
+        aliases: [ "${PERF_API_HOST:-api}" ]
+    environment:
+      <<: *api-environment
+      Transport__Mode: Rest
+      OTEL_SERVICE_NAME: senswave-api-rest
+
+  api-grpc:
+    <<: *api
+    container_name: Senswave.Perf.Grpc
+    networks:
+      perf:
+        aliases: [ "${PERF_API_HOST:-api}" ]
+    environment:
+      <<: *api-environment
+      Transport__Mode: Grpc
+      OTEL_SERVICE_NAME: senswave-api-grpc
+
+  api-grpcweb:
+    <<: *api
+    container_name: Senswave.Perf.GrpcWeb
+    networks:
+      perf:
+        aliases: [ "${PERF_API_HOST:-api}" ]
+    environment:
+      <<: *api-environment
+      Transport__Mode: GrpcWeb
+      OTEL_SERVICE_NAME: senswave-api-grpcweb
+
+  seed:
+    image: senswave-perf-seed
+    build:
+      context: ../..
+      dockerfile: src/Presentation/Senswave.Presentation.Seed/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    container_name: Senswave.Perf.Seed
+    profiles: [ seed ]
+    restart: "no"
+    cpuset: ${SIDE_CPUSET:-0-1}
+    networks: [ perf ]
+    volumes:
+      - ${CERT_DIR:-../../docker/https}:/https:ro
+    environment:
+      SSL_CERT_FILE: ${SEED_SSL_CERT_FILE:-/https/senswave.api.crt}
+      PostgreSql__Host: ${POSTGRES_HOST}
+      PostgreSql__Port: ${POSTGRES_PORT:-5432}
+      PostgreSql__Username: ${POSTGRES_USER}
+      PostgreSql__Password: ${POSTGRES_PASSWORD}
+      PostgreSql__Database: senswave_seed
+      Seed__Instance: https://${PERF_API_HOST:-api}:8443/api
+      Seed__GeneratedUsers__Count: ${SEED_USER_COUNT:-2000}
+      Seed__GeneratedUsers__EmailPattern: user{0}@gmail.com
+      Seed__GeneratedUsers__Password: User123456!
+      Seed__GeneratedUsers__Broker__Create: "true"
+      Seed__GeneratedUsers__Broker__Name: Shared Broker
+      Seed__GeneratedUsers__Broker__Url: ${SEED_BROKER_URL}
+      Seed__GeneratedUsers__Broker__Port: ${SEED_BROKER_PORT}
+      Seed__GeneratedUsers__Broker__Username: ${SEED_BROKER_USERNAME}
+      Seed__GeneratedUsers__Broker__Password: ${SEED_BROKER_PASSWORD}
+      Seed__GeneratedUsers__Devices__PicoController__GlobalTopic: perf/controller/{0}
+      Seed__GeneratedUsers__Devices__DetectorTopic: perf/detector/{0}
+      # The S5 / S6 device: one operation alone on its topic, one tile, one widget, no automation.
+      Seed__GeneratedUsers__Devices__StreamDevice: "true"
+      Seed__GeneratedUsers__Devices__StreamDeviceTopic: perf/stream/{0}
+      # Scenario data: 4 + 26 = 30 controller operations (S2 lists 30; the per-device limit is 30) and a 10x4
+      # "Large" dashboard with 40 widgets of every type (S3 displays it).
+      Seed__GeneratedUsers__Devices__PicoController__ExtraOperations: "26"
+      Seed__GeneratedUsers__Devices__PicoController__LargeDashboardRows: "10"
+      Seed__GeneratedUsers__Devices__PicoController__LargeDashboardColumns: "4"
+      Seed__Parallelism: ${SEED_PARALLELISM:-8}
+      Seed__DefaultUser__Broker__Url: ${SEED_BROKER_URL}
+      Seed__DefaultUser__Broker__Port: ${SEED_BROKER_PORT}
+      Seed__DefaultUser__Broker__Username: ${SEED_BROKER_USERNAME}
+      Seed__DefaultUser__Broker__Password: ${SEED_BROKER_PASSWORD}
+      Seed__DefaultUser__Devices__PicoController__GlobalTopic: perf/controller
+      # The static seed user list contains user1@gmail.com, which collides with generated user 1.
+      Seed__Users__1__Email: static.user1@gmail.com
+
+  perf-agent:
+    image: senswave-perf-agent
+    build:
+      context: ../..
+      dockerfile: performance/tools/PerfAgent/Dockerfile
+    container_name: Senswave.Perf.Agent
+    restart: unless-stopped
+    cpuset: ${SIDE_CPUSET:-0-1}
+    cpus: 0.25
+    mem_limit: 128m
+    memswap_limit: 128m
+    networks: [ perf ]
+    ports:
+      - ${AGENT_BIND:-0.0.0.0}:${AGENT_PORT:-9443}:9443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CERT_DIR:-../../docker/https}:/https:ro
+    environment:
+      ASPNETCORE_URLS: https://+:9443
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /https/senswave.api.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${API_CERTIFICATE_PASSWORD}
+      PERF_ENV: ${PERF_ENV:?PERF_ENV must be set (local | azure)}
+      Agent__Token: ${AGENT_TOKEN}
+      Agent__PostgresAdmin: Host=${POSTGRES_HOST};Port=${POSTGRES_PORT:-5432};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Database=postgres;Include Error Detail=true
+
+  alloy:
+    image: grafana/alloy:v1.10.0
+    container_name: Senswave.Perf.Alloy
+    restart: unless-stopped
+    cpuset: ${SIDE_CPUSET:-0-1}
+    cpus: 1
+    mem_limit: 1g
+    memswap_limit: 1g
+    privileged: true            # cAdvisor needs cgroup and device access
+    cgroup: host                # otherwise cAdvisor only sees Alloy's own cgroup
+    pid: host
+    networks: [ perf ]
+    command: [ "run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data" ]
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host/root:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    environment:
+      PERF_ENV: ${PERF_ENV:?PERF_ENV must be set (local | azure)}
+      GRAFANA_CLOUD_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT}
+      GRAFANA_CLOUD_OTLP_USER: ${GRAFANA_CLOUD_OTLP_USER}
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER}
+      GRAFANA_CLOUD_TOKEN: ${GRAFANA_CLOUD_TOKEN}
+      POSTGRES_EXPORTER_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/postgres?sslmode=${POSTGRES_SSLMODE:-disable}
+
+networks:
+  perf:
+    name: senswave-perf

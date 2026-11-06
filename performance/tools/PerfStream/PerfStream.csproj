@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MQTTnet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Perf.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Perf.Core\Perf.Core.csproj" />
+    <ProjectReference Include="..\Perf.Client\Perf.Client.csproj" />
+  </ItemGroup>
+
+</Project>
