@@ -102,9 +102,9 @@ public class KneeTests
     public void MbpsUsesDecimalMegabits() => Assert.Equal(80, NetworkStats.Mbps(10_000_000, TimeSpan.FromSeconds(1)), 3);
 
     /// <summary>Runs a search against a server that sustains everything up to <paramref name="capacity"/>.</summary>
-    private static (List<int> Steps, KneeSearch Search) Bisect(int capacity, int max = 2000, int precision = 50)
+    private static (List<int> Steps, KneeSearch Search) Search(int capacity, int start = 50, int max = 4000, double precision = 0.1)
     {
-        var search = new KneeSearch(max, precision);
+        var search = new KneeSearch(start, max, precision);
         var steps = new List<int>();
         while (search.Next is { } rate)
         {
@@ -115,46 +115,121 @@ public class KneeTests
     }
 
     [Fact]
-    public void BisectionHalvesTowardsTheKneeInPrecisionSteps()
+    public void DoublesThenBisectsThenRepeatsTheKnee()
     {
-        var (steps, search) = Bisect(capacity: 1370);
+        var (steps, search) = Search(capacity: 700);
 
-        Assert.Equal([2000, 1000, 1500, 1250, 1350, 1400], steps);
-        Assert.Equal(1350, search.Knee);
+        Assert.Equal([50, 100, 200, 400, 800, 600, 700, 750, 700], steps);
+        Assert.Equal(700, search.Knee);
         Assert.False(search.AtLeastMax);
     }
 
     [Fact]
-    public void SustainedMaxEndsTheSearchAtOnce()
+    public void SustainedMaxIsALowerBoundAfterItsRepeat()
     {
-        var (steps, search) = Bisect(capacity: 5000);
+        var (steps, search) = Search(capacity: 9000);
 
-        Assert.Equal([2000], steps);
+        Assert.Equal([50, 100, 200, 400, 800, 1600, 3200, 4000, 4000], steps);
+        Assert.Equal(4000, search.Knee);
         Assert.True(search.AtLeastMax);
+    }
+
+    [Fact]
+    public void BisectsBelowTheStartRate()
+    {
+        var (steps, search) = Search(capacity: 30);
+
+        Assert.Equal([50, 20, 30, 40, 30], steps);
+        Assert.Equal(30, search.Knee);
     }
 
     [Fact]
     public void NothingSustainedGivesKneeZero()
     {
-        var (steps, search) = Bisect(capacity: 10);
+        var (steps, search) = Search(capacity: 5);
 
-        Assert.Equal([2000, 1000, 500, 250, 100, 50], steps);
+        Assert.Equal([50, 20, 10], steps);
         Assert.Equal(0, search.Knee);
+    }
+
+    [Fact]
+    public void AFailedRepeatMovesTheKneeDownAndRepeatsTheNewOne()
+    {
+        var search = new KneeSearch(100, 4000, 0.1);
+        var steps = new List<int>();
+        var firstTry700 = true;
+        while (search.Next is { } rate)
+        {
+            steps.Add(rate);
+            var sustained = rate <= 700 && !(rate == 700 && !firstTry700);
+            firstTry700 = firstTry700 && rate != 700;
+            search.Record(rate, sustained);
+        }
+
+        Assert.Equal(650, search.Knee);
+        Assert.Equal(650, steps[^1]);
+        Assert.Equal(2, steps.Count(s => s == 650));
+    }
+
+    [Fact]
+    public void GeneratorLimitEndsTheSearchWithoutAFailedRate()
+    {
+        var search = new KneeSearch(50, 4000, 0.1);
+        search.Record(50, true);
+
+        search.StopAtGeneratorLimit();
+
+        Assert.Null(search.Next);
+        Assert.True(search.GeneratorLimited);
+        Assert.Equal(50, search.Knee);
     }
 
     [Theory]
     [InlineData(80)]
     [InlineData(420)]
     [InlineData(999)]
-    [InlineData(1951)]
-    public void KneeIsWithinPrecisionOfTheCapacityAndStepsNeverRepeat(int capacity)
+    [InlineData(3333)]
+    public void KneeIsWithinPrecisionOfTheCapacity(int capacity)
     {
-        var (steps, search) = Bisect(capacity);
+        var (steps, search) = Search(capacity);
 
-        Assert.InRange(capacity - search.Knee, 0, 50);
-        Assert.Equal(steps.Count, steps.Distinct().Count());
-        Assert.All(steps, rate => Assert.Equal(0, rate % 50));
-        Assert.True(steps.Count <= 7);
+        Assert.InRange(capacity - search.Knee, 0, Math.Max(KneeSearch.RateStep, capacity * 0.11));
+        Assert.All(steps, rate => Assert.Equal(0, rate % KneeSearch.RateStep));
+        Assert.Equal(search.Knee, steps[^1]);
+        Assert.True(steps.Count <= 12);
+    }
+
+    [Fact]
+    public void KneeAtTheMaxIsALowerBound()
+    {
+        var knee = Assert.Single(KneeReport.Knees([Step(Transport.Rest, Scenario.S4, 4000, RunStatus.Valid)], max: 4000));
+
+        Assert.Equal(4000, knee.KneeRate);
+        Assert.True(knee.AtLeast);
+    }
+
+    [Fact]
+    public void GeneratorLimitIsALowerBoundAndASaturatedStepIsNot()
+    {
+        var limited = Assert.Single(KneeReport.Knees([
+            Step(Transport.Rest, Scenario.S4, 800, RunStatus.Valid),
+            Step(Transport.Rest, Scenario.S4, 1600, RunStatus.InvalidLoadGenerator)]));
+        var saturated = Assert.Single(KneeReport.Knees([
+            Step(Transport.Rest, Scenario.S4, 800, RunStatus.Valid),
+            Step(Transport.Rest, Scenario.S4, 1600, RunStatus.Saturated)]));
+
+        Assert.True(limited.AtLeast);
+        Assert.False(saturated.AtLeast);
+    }
+
+    [Fact]
+    public void SuggestionIsALowerBoundOnlyWhenTheLowestKneeIs()
+    {
+        var bound = Assert.Single(KneeReport.Suggest([new KneeResult(Transport.Rest, Scenario.S4, 4000, AtLeast: true), new KneeResult(Transport.Grpc, Scenario.S4, 4000, AtLeast: true)]));
+        var exact = Assert.Single(KneeReport.Suggest([new KneeResult(Transport.Rest, Scenario.S4, 900), new KneeResult(Transport.Grpc, Scenario.S4, 4000, AtLeast: true)]));
+
+        Assert.True(bound.AtLeast);
+        Assert.False(exact.AtLeast);
     }
 
     [Fact]

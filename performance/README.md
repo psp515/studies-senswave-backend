@@ -62,9 +62,9 @@ The VM's public name is a Cloudflare record in **DNS-only** mode (no proxy). The
 
 1. **Reset (`activate`).** Stop all APIs, drop and recreate `senswave_run` from `senswave_template`, recreate and start the target API (with `Diagnostics__OpenTelemetry__Enabled` and `OTEL_RESOURCE_ATTRIBUTES=run_id=<runId>`), wait until healthy.
 2. **Verification.** Fail fast, no measurement. `/status` must report the expected transport, healthy; log in as the seeded users over the transport under test, discover device, dashboard and tile IDs; one successful call per scenario. For S5/S6 a test message must also arrive through the broker.
-3. **Warm-up** (30 s, excluded; smoke: 10 s).
+3. **Warm-up** (30 s, excluded; smoke: 10 s). It runs in the same process as the measurement, for k6 as a separate k6 scenario, so VUs and connections carry over and their setup stays out of the measured window.
 4. **Measurement** (5 min; smoke: 30 s). Both windows are recorded in UTC.
-5. **Validity gates:** `dropped_iterations == 0`, error rate below 1%, load-generator CPU below 80% on average, and the measured window within max(2 s, 5%) of the campaign duration. Stream scenarios (S6) additionally need zero lost events and a delivery p99 of at most 5000 ms. A load generator at or above 80% CPU makes the run `invalid-loadgen` (retried once); any other failed gate makes it `saturated`, which is a result, not an error (see [Run status](#run-status-gates-and-saturated-runs)).
+5. **Validity gates:** dropped iterations at most 0.1% of the arrivals, client request p99 of at most 1000 ms, error rate below 1%, load-generator CPU below 80% on average, and the measured window within max(2 s, 5%) of the campaign duration. Stream scenarios (S6) use their own limits instead of the first two: no dropped publishes, zero lost events and a delivery p99 of at most 5000 ms. A load generator at or above 80% CPU makes the run `invalid-loadgen` (retried once); any other failed gate makes it `saturated`, which is a result, not an error (see [Run status](#run-status-gates-and-saturated-runs)).
 6. **Export** of the server metrics for the measurement window (automatic at the end of `run`).
 
 ### Scenarios and load
@@ -81,7 +81,7 @@ The VM's public name is a Cloudflare record in **DNS-only** mode (no proxy). The
 The rpc names come from `src/Shared/Senswave.Contracts/Protos`.
 
 - **Load model:** open model, k6 `constant-arrival-rate`. Each scenario runs **three separate runs at 100, 500 and 1000 per second**.
-- **VU pool:** `preAllocatedVUs` = max(20, 0.2 × R), `maxVUs` = max(100, 2 × R). The pool grows when responses slow down, up to a latency of 2 s per request, so the client is practically never the limit. Each VU holds one connection, so a slower transport opens more connections; `server/connections.csv` (`kestrel_active_connections`) shows how many.
+- **VU pool:** fixed, `preAllocatedVUs` = `maxVUs` = max(100, R), so the client caps at an average latency of about 1 s per request. k6 counts a dropped iteration whenever no VU is free, even below `maxVUs`, so a pool that grows during the run would drop iterations at much lower latencies. Each VU holds one connection; `server/connections.csv` (`kestrel_active_connections`) shows how many.
 - **Users:** `prepare` seeds 2000 users (`SEED_USER_COUNT`); a campaign uses the first `users.count` of them (2000 in `full.json` and `knee.json`, 100 in `smoke.json`). Requests go round-robin over the users, and S6 opens one subscriber per user.
 - For S1-S5 the rate is requests per second.
 - For S6 the rate is **events published per second**. PerfStream acts as the devices and publishes MQTT messages to the broker; the API receives them and LiveUpdate pushes them to the subscribers. There is one subscriber per seeded user's device, so delivered events per second equals published events per second. The publisher does not use the transport under test, so S6 isolates the push path (server to client).
@@ -413,18 +413,23 @@ JSON, read with `System.Text.Json` (`runner/campaigns/smoke.json`, `full.json`).
 | `export.traces` | bool | Also export up to 500 traces from Tempo. |
 | `scenarioRates` | object, optional | Per-scenario rates, e.g. `{ "S5": [20, 60] }`, overriding `rates` for that scenario. Keys are the exact scenario names; each must be in `scenarios`. |
 | `stopAfterSaturated` | bool, optional | Ladder knee mode (alternative to `knee`): rates are run in ascending order per transport and scenario, and once a step is not `valid` the higher steps of that ladder are skipped. |
-| `knee` | object, optional | Knee search by bisection: `{ "max": 2000, "precision": 50 }`. Replaces `rates`, which may then be omitted. |
+| `knee` | object, optional | Knee search: `{ "start": 50, "max": 4000, "precision": 0.1 }` (`precision` is a fraction of the knee). Replaces `rates`, which may then be omitted. |
 | `export.rawK6` | bool | Also write the raw client samples: `k6-raw.csv.gz` per k6 run (S1-S5) and `stream-raw.csv.gz` per PerfStream run (S6). On in both shipped campaigns. |
 
 Run IDs have the form `r<round>-<transport>-<scenario>-<rate>-<otel|nootel>`, e.g. `r1-grpc-s2-500-otel`.
 
 ### Knee test, then the fixed-rate campaign
 
-1. **Knee test** (`runner/campaigns/knee.json`, `"knee": { "max": 1000, "precision": 50 }`): a **binary search** per transport and scenario. It tests 1000/s first; if that is sustained the knee is reported as "at least 1000" (repeat that pair with a higher max if the exact value matters). Otherwise it halves the gap between the highest sustained and the lowest failed rate (rounded down to a multiple of 50) until that gap is 50/s, for example 1000, 500, 750, 600, 650, 700: about 5 steps of 30 s warm-up and 60 s measurement. After a `valid` step the next step runs on the same API instance and test data (no reset, no discovery); after any other step the API and database are reset, because an overloaded API can keep backlogs. Any step that is not `valid` (saturated, failed, overloaded load generator) counts as not sustained. Expect about 15 min per pair, about 4.5 h for 3 transports x 6 scenarios. Steps on a reused instance keep the previous step's `run_id` resource attribute, so their traces are not separable by `run_id` (the knee campaign does not export traces).
-2. `perfrunner knee results/<knee-dir>`: the knee of a transport and scenario is the highest `valid` rate below the lowest rate that was not `valid` (the ladder mode uses the same rule). The suggested fixed rates are 25% and 75% of the **lowest** knee across the transports of that scenario, rounded down to a multiple of 10.
-3. Copy `scenarioRates` from `suggested-scenario-rates.json` into the fixed-rate campaign (`full.json`), set `rounds: 1`, and run it once per day at the same time of day. Each day is one independent round.
+1. **Knee test** (`runner/campaigns/knee.json`, `"knee": { "start": 50, "max": 4000, "precision": 0.1 }`), per transport and scenario:
+   - **Doubling** from `start`: 50, 100, 200, ... up to `max`, until a step is not sustained. If `max` is sustained, the knee is reported as "at least 4000".
+   - **Bisection** between the highest sustained and the lowest failed rate (midpoints rounded down to a multiple of 10), until the gap is at most 10% of the knee (at least 10/s). For a capacity of 700: 50, 100, 200, 400, 800, 600, 700, 750.
+   - **One repeat** of the knee. If the repeat fails, that rate counts as failed and the search continues below it, then repeats the new knee.
 
-The VU pool grows up to 2 × R, so a step saturates on the client side only beyond 2 s per request; a knee is a server limit unless the load generator CPU gate fires (`invalid-loadgen`). At high rates the pool can reach thousands of VUs: give the load machine enough RAM (check its memory during the knee test).
+   A step takes 30 s warm-up and 60 s measurement. Expect 9 to 11 steps per pair, about 20 min, so about 6 h for 3 transports x 6 scenarios. After a `valid` step the next step runs on the same API instance and test data (no reset, no discovery); after any other step the API and database are reset, because an overloaded API can keep backlogs. An overloaded load generator (`invalid-loadgen`, after one retry) ends the search of that pair: the knee is reported as "at least" the last sustained rate, because the step says nothing about the server. Any other step that is not `valid` counts as not sustained. Steps on a reused instance keep the previous step's `run_id` resource attribute, so their traces are not separable by `run_id` (the knee campaign does not export traces).
+2. `perfrunner knee results/<knee-dir>`: the knee of a transport and scenario is the highest `valid` rate below the lowest rate that was not `valid`; a repeated rate is judged by its last attempt (the ladder mode uses the same rule). The suggested fixed rates are 25% and 75% of the **lowest** knee across the transports of that scenario, rounded down to a multiple of 10. If that lowest knee is only a lower bound, the output says so: the rates are then not really 25% and 75% of the capacity.
+3. Copy `scenarioRates` from `suggested-scenario-rates.json` into the fixed-rate campaign (`full.json`), set `rounds: 1`, and run it once per day at the same time of day, rotating the `transports` list between days (REST, gRPC, gRPC-Web; then gRPC, gRPC-Web, REST; then gRPC-Web, REST, gRPC). Each day is one independent round.
+
+The p99 limit makes the knee the highest rate that stays fast enough, not only the highest rate that gets answered. The limit is client-side, so it includes the network. All VUs are busy only at an average latency of about 1 s per request; a knee is a limit of the system under test unless the load generator CPU gate fires (`invalid-loadgen`). At high rates the pool reaches thousands of VUs, and each one loads its own copy of the script (and of the `.proto` files for gRPC): give the load machine enough RAM (check its memory during the knee test).
 
 ### Scenario data and response samples
 
@@ -451,7 +456,6 @@ results/<campaign-file>-<yyyyMMdd-HHmm>/
     meta.json
     run-data.json
     verify-summary.json
-    warmup-summary.json
     k6-summary.json              # S1-S5
     stream-summary.json          # S6
     k6-raw.csv.gz                # S1-S5, only with export.rawK6
@@ -459,7 +463,7 @@ results/<campaign-file>-<yyyyMMdd-HHmm>/
     agent-logs.txt               # only for runs that are not valid
     server/                      # valid and saturated runs, written by export
       latency-buckets.csv  throughput.csv  cpu.csv  memory.csv
-      gc.csv  network.csv  connections.csv
+      gc.csv  network.csv  connections.csv  db.csv
       traces.jsonl               # only with export.traces
 ```
 
@@ -468,10 +472,10 @@ results/<campaign-file>-<yyyyMMdd-HHmm>/
 | `campaign.json` | The campaign, shuffle seed and run IDs. Contains the seeded test password (a test value). |
 | `meta.json` | Run id, attempt, round, transport, scenario, rate, OTel, shuffle seed, git SHA, image ID, container limits from `/status`, UTC warm-up start / measurement start / measurement end, `status`, `failures`. |
 | `run-data.json` | Per-user IDs discovered at the start of the attempt. Access tokens are blanked after the attempt. |
-| `verify-summary.json`, `warmup-summary.json` | k6 summaries of the verification and warm-up phases. |
-| `k6-summary.json` | k6 `--summary-export` of the measurement: p50/p90/p95/p99/max, `http_reqs`, `dropped_iterations`, checks, data sent/received. |
+| `verify-summary.json` | k6 summary of the verification phase. |
+| `k6-summary.json` | k6 `--summary-export`. Use the metrics with the `{scenario:measure}` suffix (p50/p90/p95/p99/max, `iterations`, `dropped_iterations`, checks, data sent/received): the metrics without it include the warm-up, and so does every `rate` field. |
 | `stream-summary.json` | PerfStream: delivery latency p50/p95/p99/max, published, delivered, lost (still pending 5 s after the run), connection setup time. Same shape as the k6 summary. |
-| `k6-raw.csv.gz` | Raw k6 samples: one row per metric per request (`http_req_duration`, `grpc_req_duration`, `http_req_waiting`, `data_received`, ...). |
+| `k6-raw.csv.gz` | Raw k6 samples: one row per metric per request (`http_req_duration`, `grpc_req_duration`, `http_req_waiting`, `data_received`, ...). It includes the warm-up: keep the rows whose `scenario` column is `measure`. |
 | `stream-raw.csv.gz` | Raw PerfStream samples: one row per measured delivery, `delivered_ms` (receive time since the first publish) and `latency_ms`. |
 | `agent-logs.txt` | API container log, last 2000 lines only (the start of the attempt can be cut). |
 | `server/latency-buckets.csv` | Raw histogram: request count per `http_server_request_duration_seconds_bucket` boundary (`le`) over the whole measurement window, in total and by status code. No percentile is pre-computed; the analysis derives them from the counts. |
@@ -480,6 +484,7 @@ results/<campaign-file>-<yyyyMMdd-HHmm>/
 | `server/gc.csv` | Allocated bytes, GC counts, ThreadPool queue length. |
 | `server/network.csv` | Container rx/tx bytes. |
 | `server/connections.csv` | `kestrel.active_connections` over time, TLS handshake duration bucket counts. |
+| `server/db.csv` | `senswave_run`: transactions and rollbacks per second, blocks read and hit, deadlocks, temp bytes, connections, sessions by state, locks by mode, size. |
 | `server/traces.jsonl` | Up to 500 traces for the window (optional). |
 
 Client and server data are stored raw and analysed separately. Client and server percentiles are **not** subtracted from each other (a difference of percentiles is not the percentile of a difference). Native gRPC in k6 reports only total duration, so the cross-transport client comparison uses total duration; `http_req_waiting` and the TLS timings exist for REST and gRPC-Web only and are supplementary. Headline numbers come from metrics (never sampled). Traces (1% sampling) are only for the span breakdown of S2 and S3.
@@ -489,7 +494,7 @@ Client and server data are stored raw and analysed separately. Client and server
 | `meta.json` `status` | Meaning | What to do |
 |---|---|---|
 | `valid` | Verification passed and all gates passed. | Nothing. |
-| `saturated` | Measured with a healthy load generator (CPU below 80%), but the API did not sustain the rate: `dropped_iterations > 0` (all VUs of the fixed pool were busy), error rate >= 1%, a measured window that differs from the campaign duration by more than max(2 s, 5%) (backlog or stall), or for S6: any lost event or delivery latency p99 above 5000 ms. `failures` lists which. | A **result**: "transport X did not sustain rate R". Not retried, server data exported, kept in the analysis (achieved throughput, latency, failures). For S6 runs with lost events the latency is biased by the FIFO matching; report delivered / lost counts, not the latency. |
+| `saturated` | Measured with a healthy load generator (CPU below 80%), but the API did not sustain the rate: dropped iterations above 0.1% of the arrivals (all VUs of the fixed pool were busy), client request p99 above 1000 ms, error rate >= 1%, a measured window that differs from the campaign duration by more than max(2 s, 5%) (backlog or stall), or for S6: any lost event or delivery latency p99 above 5000 ms. `failures` lists which. | A **result**: "transport X did not sustain rate R". Not retried, server data exported, kept in the analysis (achieved throughput, latency, failures). For S6 runs with lost events the latency is biased by the FIFO matching; report delivered / lost counts, not the latency. |
 | `invalid-loadgen` | Average load-generator CPU >= 80%. Other failures may be listed too. | Not used for results: the measurement describes the load side. Use a stronger load machine or lower the rate. |
 | `failed-verification` | Activation unhealthy, wrong transport reported, or a verification call or broker test failed. No measurement was taken. | Read `failures` and `agent-logs.txt`; check broker reachability and credentials, and that `prepare` was run on this commit. |
 | `failed` | Exception or a failing measured run. | Same as above. |
@@ -528,13 +533,14 @@ Grafana is for live monitoring; thesis data comes from the exported files.
 | App OTLP (metrics, traces) on 4317 / 4318 | `otelcol.receiver.otlp` → `otelcol.processor.transform` (copies `senswave.transport` onto every data point as `transport`; `run_id` is not copied, see below) → `otelcol.processor.batch` | Grafana Cloud OTLP (`GRAFANA_CLOUD_OTLP_ENDPOINT`) |
 | Container CPU, memory, network, OOM kills, restarts | `prometheus.exporter.cadvisor` (`docker_only`) → `prometheus.scrape` (10 s) → `prometheus.relabel` | Prometheus remote write (`GRAFANA_CLOUD_PROM_URL`) |
 | Host CPU (including steal), memory, disk, network | `prometheus.exporter.unix` → `prometheus.scrape` (10 s) → `prometheus.relabel` | Prometheus remote write |
+| PostgreSQL activity of `senswave_run`: transactions, buffer cache, sessions by state, locks, size | `prometheus.exporter.postgres` (`POSTGRES_EXPORTER_DSN`) → `prometheus.scrape` (10 s) → `prometheus.relabel` (keeps only these metrics, drops `datid`) | Prometheus remote write |
 
 ### Labels
 
 | Label | Source |
 |---|---|
 | `run_id` | `OTEL_RESOURCE_ATTRIBUTES=run_id=<runId>`, set by PerfAgent per activation. A resource attribute only (`target_info`, traces), **not** a metric label: see "Active series limit" below |
-| `transport` | the `senswave.transport` resource attribute, promoted by Alloy; k6 also tags `transport`, `scenario`, `rate` |
+| `transport` | the `senswave.transport` resource attribute, promoted by Alloy; k6 also tags `transport`, `perf_scenario`, `rate` (`scenario` is k6's own tag: `warmup` or `measure`) |
 | `env` | `PERF_ENV` (`local` or `azure`), added to container and host metrics |
 
 ### Active series limit (why metrics have no run_id label)
@@ -572,6 +578,36 @@ Expected: every metric family used in `ExportQueries.cs` is listed, and the seco
 `grafana/dashboard.json` (title "Senswave transport comparison", variable `transport`; select a run with the time range). Panels: server latency p50/p95/p99, requests/s, CPU-ms per request, allocated bytes per request, container CPU, container memory, network bytes/s, host CPU steal.
 
 Import: Grafana > Dashboards > New > Import > Upload JSON file > select `performance/grafana/dashboard.json` > pick the stack's Prometheus data source (`grafanacloud-<stack>-prom`) > Import. Choose `transport` at the top and the run's measurement window as the time range. Container panels need cAdvisor per-container series (Azure VM only).
+
+### Azure Monitor (database CPU, memory, disk)
+
+The PostgreSQL exporter sees activity inside the database, not the managed server's CPU, memory or disk. Azure Monitor collects those automatically (one point per minute, kept 93 days), so nothing has to be enabled. A session needs the `Reader` role on the server and one export at its end, before results are archived.
+
+> **Untested command.** Written from the Azure documentation and not run against a server. Check it with `az monitor metrics list --help`.
+
+```bash
+az monitor metrics list --resource "$(az postgres flexible-server show --resource-group rg-senswave-perf --name <server-name> --query id -o tsv)" --metrics cpu_percent memory_percent iops disk_queue_depth disk_iops_consumed_percentage active_connections network_bytes_ingress network_bytes_egress --start-time <session-start-utc> --end-time <session-end-utc> --interval PT1M --aggregation Average Maximum -o json > performance/results/<campaign-dir>/azure-db-metrics.json
+```
+
+`disk_queue_depth` and `disk_iops_consumed_percentage` appear with a delay of up to 5 minutes, so wait before exporting. A 60 s knee step gets one or two points: enough to see that the database was the limit, not to measure it precisely. Compare the file with each run's window in `meta.json`.
+
+### MQTT broker host (Mosquitto)
+
+The broker is a remote host outside Alloy, and a limit of the broker would look like a limit of S5 or S6. Mosquitto handles messages on one thread, so on a 2-vCPU host it saturates at about one busy core; look at the process, not the host average.
+
+> **Untested commands.** Written from the Mosquitto documentation and not run against the broker.
+
+Enable the statistics with `sys_interval 10` in `mosquitto.conf`, then run these on the broker for the whole session (the user must be allowed to read `$SYS`, and `pidstat` comes from `sysstat`):
+
+```bash
+mosquitto_sub -h localhost -u <user> -P <password> -t '$SYS/broker/#' -F '%I %t %p' > broker-sys.log &
+```
+
+```bash
+TZ=UTC pidstat -u -r -p "$(pidof mosquitto)" 5 > broker-cpu.log &
+```
+
+Check `$SYS/broker/clients/connected` (2000 users means about 2000 clients, so also check `ulimit -n` of the service), `$SYS/broker/load/messages/received/1min` and `$SYS/broker/publish/messages/dropped`. A step with the broker process near 100% of one core or with dropped messages describes the broker, not the transport. The broker's distance from the VM and the load machine also adds to S5 and S6 latency: state it in the thesis.
 
 ### Retention warning
 
@@ -695,5 +731,4 @@ Collected here while the platform evolves; each one belongs in the thesis' threa
 - **S6 subscriber count.** One subscriber per user (2000 in `full.json`). Memory per subscription is still a small difference next to the working set; report it with that caveat.
 - **S6 pacing.** PerfStream schedules publishes with `Task.Delay`; at 1000/s the 1 ms interval is close to the timer resolution, so events can be sent in small bursts.
 - **End-user view.** The load side is one machine on fixed broadband: all users share one network path and one IP, there is no mobile radio (latency variance, loss, handovers), no device-side parsing cost, and each scenario runs alone at a constant rate instead of a real request mix. `network-before.json` / `network-after.json` record the RTT and bandwidth of each session.
-- **Connection count follows latency.** k6 opens one connection per VU and adds VUs when responses slow down, so a slower transport is measured with more client connections (and more TLS handshakes at the start). Report `kestrel_active_connections` per run next to the latency.
 - **Broker clients only for S5/S6.** Discovery starts the users' MQTT broker clients (one connection per user, held by the API) only for S5 and S6, so S1-S4 run without them. The background load therefore differs between scenarios, but never between transports.

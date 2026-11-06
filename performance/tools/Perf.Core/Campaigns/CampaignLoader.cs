@@ -25,7 +25,7 @@ public static class CampaignLoader
         Require(NonEmptyDistinct(campaign.Scenarios), "scenarios");
         // A knee search picks its own rates; every other campaign lists them.
         Require(campaign.Knee is not null || (NonEmptyDistinct(campaign.Rates) && campaign.Rates.All(r => r > 0)), "rates");
-        Require(campaign.Knee is null || (campaign.Knee.Precision > 0 && campaign.Knee.Max > campaign.Knee.Precision), "knee");
+        Require(campaign.Knee is null || (campaign.Knee.Start > 0 && campaign.Knee.Max >= campaign.Knee.Start && campaign.Knee.Precision is > 0 and < 1), "knee");
         Require(NonEmptyDistinct(campaign.Otel), "otel");
         Require(campaign.WarmupSeconds >= 0, "warmupSeconds");
         Require(campaign.DurationSeconds > 0, "durationSeconds");

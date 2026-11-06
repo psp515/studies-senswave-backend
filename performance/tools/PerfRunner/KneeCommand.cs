@@ -28,15 +28,16 @@ public static class KneeCommand
 
         await File.WriteAllTextAsync(Path.Combine(campaignDir, "knee.csv"), KneeReport.Csv(steps), ct);
 
-        var knees = KneeReport.Knees(steps);
+        var campaign = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(campaignDir, "campaign.json"), ct));
+        var knees = KneeReport.Knees(steps, campaign?["campaign"]?["knee"]?["max"]?.GetValue<int>());
         foreach (var knee in knees)
-            Console.WriteLine($"{knee.Scenario,-4} {knee.Transport,-8} knee {knee.KneeRate}/s");
+            Console.WriteLine($"{knee.Scenario,-4} {knee.Transport,-8} knee {(knee.AtLeast ? ">= " : "")}{knee.KneeRate}/s");
 
         var suggestions = KneeReport.Suggest(knees);
         foreach (var s in suggestions)
             Console.WriteLine(s.Rates.Length == 0
                 ? $"{s.Scenario}: no valid step on some transport; lower the first rate and repeat"
-                : $"{s.Scenario}: lowest knee {s.LowestKnee}/s -> rates [{string.Join(", ", s.Rates)}]");
+                : $"{s.Scenario}: lowest knee {(s.AtLeast ? ">= " : "")}{s.LowestKnee}/s -> rates [{string.Join(", ", s.Rates)}]{(s.AtLeast ? " (lower bound: not really 25% and 75% of the capacity)" : "")}");
 
         var scenarioRates = suggestions.Where(s => s.Rates.Length > 0).ToDictionary(s => s.Scenario.ToString(), s => s.Rates);
         await File.WriteAllTextAsync(Path.Combine(campaignDir, "suggested-scenario-rates.json"),
@@ -52,8 +53,10 @@ public static class KneeCommand
         if (File.Exists(k6))
         {
             var metrics = JsonNode.Parse(await File.ReadAllTextAsync(k6, ct))?["metrics"];
-            var duration = metrics?["grpc_req_duration"] ?? metrics?["http_req_duration"];
-            return (Read(duration, "p(50)"), Read(duration, "p(99)"), Read(metrics?["iterations"], "rate"));
+            // k6's own rate divides by the whole test, warm-up included.
+            var duration = K6Summary.Duration(metrics);
+            return (Read(duration, "p(50)"), Read(duration, "p(99)"),
+                Read(K6Summary.Metric(metrics, "iterations"), "count") is { } count && window > 0 ? count / window : null);
         }
 
         var stream = Path.Combine(dir, "stream-summary.json");

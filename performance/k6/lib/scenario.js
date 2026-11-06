@@ -1,4 +1,5 @@
 import { check } from 'k6';
+import exec from 'k6/execution';
 import { BASE_URL, TRANSPORT } from './config.js';
 import * as grpcClient from './grpc.js';
 import * as grpcWeb from './grpcweb.js';
@@ -6,6 +7,11 @@ import * as grpcWeb from './grpcweb.js';
 // Runs one operation over the selected transport with the same two checks everywhere:
 // "ok" (success status) and "has body" (non-empty response).
 export function run(op) {
+    // The runner reads this to bind the server metrics export to the measurement phase.
+    if (exec.scenario.name === 'measure' && exec.scenario.iterationInTest === 0) {
+        console.log(`PERF_MEASURE_START ${Date.now()}`);
+    }
+
     switch (TRANSPORT) {
         case 'rest': {
             const res = op.rest();

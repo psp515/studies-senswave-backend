@@ -73,6 +73,29 @@ public class GatesTests
         Assert.Contains(result.Failures, f => f.Contains("FIFO"));
     }
 
+    [Theory]
+    [InlineData(1, 100_000, true)]      // momentary
+    [InlineData(100, 99_900, true)]     // exactly 0.1% of the arrivals
+    [InlineData(101, 99_899, false)]
+    [InlineData(1, 0, false)]           // no completed iterations
+    public void DroppedIterationsOfK6RunsMayReachTheRatio(long dropped, long iterations, bool passes) =>
+        Assert.Equal(passes, Gates.Evaluate(new RunMetrics(dropped, 0, 0.1, Iterations: iterations)).Passed);
+
+    [Fact]
+    public void AnyDroppedIterationFailsARunWithoutIterationCount() =>
+        Assert.False(Gates.Evaluate(new RunMetrics(1, 0, 0.1)).Passed);
+
+    [Theory]
+    [InlineData(1000, true)]
+    [InlineData(1000.1, false)]
+    public void LatencyGateBoundary(double p99, bool passes)
+    {
+        var result = Gates.Evaluate(new RunMetrics(0, 0, 0.1, Iterations: 1000, LatencyP99Ms: p99));
+
+        Assert.Equal(passes, result.Passed);
+        Assert.Equal(passes ? RunStatus.Valid : RunStatus.Saturated, result.Status);
+    }
+
     [Fact]
     public void CleanRunIsValid() => Assert.Equal(RunStatus.Valid, Gates.Evaluate(new RunMetrics(0, 0, 0.5)).Status);
 

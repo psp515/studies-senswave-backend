@@ -47,6 +47,15 @@ public static class ExportQueries
         list.Add(new("connections.csv", false,
             $"sum by (le) (increase(kestrel_tls_handshake_duration_seconds_bucket{{{run}}}[{window}s]))"));
 
+        // PostgreSQL (database under test only). With container and host metrics this shows whether the database or the API was the limit.
+        var db = "datname=\"senswave_run\"";
+        foreach (var counter in new[] { "xact_commit", "xact_rollback", "blks_read", "blks_hit", "deadlocks", "temp_bytes" })
+            list.Add(new("db.csv", true, $"rate(pg_stat_database_{counter}{{{db}}}[30s])"));
+        list.Add(new("db.csv", true, $"pg_stat_database_numbackends{{{db}}}"));
+        list.Add(new("db.csv", true, $"sum by (state) (pg_stat_activity_count{{{db}}})"));
+        list.Add(new("db.csv", true, $"sum by (mode) (pg_locks_count{{{db}}})"));
+        list.Add(new("db.csv", true, $"pg_database_size_bytes{{{db}}}"));
+
         return list;
     }
 }

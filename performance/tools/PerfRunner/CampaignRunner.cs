@@ -19,7 +19,7 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
         {
             var pairs = CampaignPlanner.Pairs(campaign, seed);
             await ResultsWriter.Json(Path.Combine(dir, "campaign.json"), new { campaign, seed, pairs }, ct);
-            Console.WriteLine($"knee search for {pairs.Count} transport/scenario pairs (max {knee.Max}/s, precision {knee.Precision}/s), shuffle seed {seed}, results in {dir}");
+            Console.WriteLine($"knee search for {pairs.Count} transport/scenario pairs ({knee.Start}/s to {knee.Max}/s, precision {knee.Precision:P0}), shuffle seed {seed}, results in {dir}");
             await RecordNetwork(campaign, Path.Combine(dir, "network-before.json"), ct);
 
             foreach (var pair in pairs)
@@ -65,22 +65,25 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
     }
 
     /// <summary>
-    /// Bisection for one pair (KneeSearch). After a sustained (valid) step the next, higher step runs on the same API
-    /// instance and test data, without reset and discovery. After any other step the API and database are reset, because
-    /// an overloaded API can keep backlogs that would distort the next step. A step that fails for a reason other than
-    /// saturation (verification, crash, overloaded load generator) still counts as not sustained, so the search ends.
+    /// Doubling, then bisection, then one repeat of the knee for one pair (KneeSearch). After a sustained (valid) step the
+    /// next step runs on the same API instance and test data, without reset and discovery. After any other step the API and
+    /// database are reset, because an overloaded API can keep backlogs that would distort the next step. An overloaded load
+    /// generator ends the search: it says nothing about the server. Verification failures and crashes count as not sustained.
+    /// A repeated rate gets the next attempt number, so its last attempt is the step's result in the knee report.
     /// </summary>
     private async Task SearchKnee(Campaign campaign, CampaignKnee knee, RunPair pair, int seed, string dir, CancellationToken ct)
     {
-        var search = new KneeSearch(knee.Max, knee.Precision);
+        var search = new KneeSearch(knee.Start, knee.Max, knee.Precision);
+        var attempts = new Dictionary<int, int>();
         Session? session = null;
 
         while (search.Next is { } rate)
         {
             var run = pair.At(rate);
             RunMeta meta = null!;
-            for (var attempt = 1; attempt <= 2; attempt++)
+            for (var tries = 1; tries <= 2; tries++)
             {
+                var attempt = attempts[rate] = attempts.GetValueOrDefault(rate) + 1;
                 (meta, var next) = await Execute(campaign, run, attempt, seed, dir, session, ct);
                 session = meta.Status == RunStatus.Valid ? next : null;
                 Console.WriteLine($"{run.RunId} a{attempt}: {meta.Status} {string.Join("; ", meta.Failures)}");
@@ -88,10 +91,15 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
                     break;
             }
 
-            search.Record(rate, meta.Status == RunStatus.Valid);
+            if (meta.Status == RunStatus.InvalidLoadGenerator)
+                search.StopAtGeneratorLimit();
+            else
+                search.Record(rate, meta.Status == RunStatus.Valid);
         }
 
-        var result = search.AtLeastMax ? $">= {search.Knee}/s (max sustained)" : $"{search.Knee}/s (precision {knee.Precision}/s)";
+        var result = search.GeneratorLimited ? $">= {search.Knee}/s (load generator limit)"
+            : search.AtLeastMax ? $">= {search.Knee}/s (max sustained)"
+            : $"{search.Knee}/s (precision {knee.Precision:P0})";
         Console.WriteLine($"knee {pair.Transport} {pair.Scenario}: {result}");
     }
 
@@ -162,7 +170,7 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
             await tool.Run(context, campaign.WarmupSeconds, measured: false, ct);
 
             await using var cpu = new CpuSampler();
-            measureStart = isStream ? warmupStart.Value.AddSeconds(campaign.WarmupSeconds) : DateTimeOffset.UtcNow;
+            measureStart = warmupStart.Value.AddSeconds(campaign.WarmupSeconds);
             var result = await tool.Run(context, campaign.DurationSeconds, measured: true, ct);
             measureStart = result.MeasureStartUtc ?? measureStart;
             measureEnd = result.MeasureEndUtc ?? DateTimeOffset.UtcNow;
@@ -171,7 +179,7 @@ public sealed class CampaignRunner(RunnerSettings settings, AgentClient agent, I
                 return (await Finish(runDir, Meta("failed", ["measured run failed", Trim(result.Output)]), run, started, ct), null);
 
             var gates = Gates.Evaluate(new RunMetrics(result.Dropped, result.ErrorRate, cpu.AverageBetween(measureStart.Value, measureEnd.Value),
-                (measureEnd.Value - measureStart.Value).TotalSeconds, campaign.DurationSeconds, result.DeliveryP99Ms, result.Lost));
+                (measureEnd.Value - measureStart.Value).TotalSeconds, campaign.DurationSeconds, result.DeliveryP99Ms, result.Lost, result.Iterations, result.LatencyP99Ms));
             return (await Finish(runDir, Meta(gates.Status, gates.Failures), run, started, ct), session);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

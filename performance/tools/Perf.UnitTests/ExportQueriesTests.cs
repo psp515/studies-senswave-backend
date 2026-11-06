@@ -62,6 +62,19 @@ public class ExportQueriesTests
     }
 
     [Fact]
+    public void DatabaseQueriesSelectTheDatabaseUnderTest()
+    {
+        var db = ExportQueries.For(Meta()).Where(q => q.File == "db.csv").ToList();
+
+        Assert.Contains(db, q => q.PromQl.Contains("pg_stat_database_xact_commit"));
+        Assert.All(db, q =>
+        {
+            Assert.True(q.Range);
+            Assert.Contains("datname=\"senswave_run\"", q.PromQl);
+        });
+    }
+
+    [Fact]
     public void MetaWithoutMeasurementWindowDoesNotThrow()
     {
         var meta = Meta() with { MeasureStartUtc = null, MeasureEndUtc = null };

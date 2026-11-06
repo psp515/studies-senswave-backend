@@ -7,30 +7,37 @@ namespace Perf.Core.Knee;
 public sealed record KneeStep(Transport Transport, Scenario Scenario, int Rate, string Status,
     double? ClientP50Ms, double? ClientP99Ms, double? AchievedPerSecond);
 
-public sealed record KneeResult(Transport Transport, Scenario Scenario, int KneeRate);
+/// <param name="AtLeast">The real knee is higher or unknown: the search reached its max, or the load generator was the limit.</param>
+public sealed record KneeResult(Transport Transport, Scenario Scenario, int KneeRate, bool AtLeast = false);
 
 /// <param name="LowestKnee">The lowest knee across the transports of the scenario.</param>
 /// <param name="Rates">The suggested fixed rates: 25% and 75% of <paramref name="LowestKnee"/>.</param>
-public sealed record RateSuggestion(Scenario Scenario, int LowestKnee, int[] Rates);
+/// <param name="AtLeast">The lowest knee is only a lower bound, so the rates are not really 25% and 75% of the capacity.</param>
+public sealed record RateSuggestion(Scenario Scenario, int LowestKnee, int[] Rates, bool AtLeast = false);
 
 public static class KneeReport
 {
     public static readonly double[] Fractions = [0.25, 0.75];
 
     /// <summary>The knee is the highest rate whose step and every lower step are valid; 0 when the lowest step already failed.</summary>
-    public static IReadOnlyList<KneeResult> Knees(IEnumerable<KneeStep> steps) =>
+    /// <param name="max">The search's upper limit, if any: a knee at this rate is reported as a lower bound.</param>
+    public static IReadOnlyList<KneeResult> Knees(IEnumerable<KneeStep> steps, int? max = null) =>
         steps.GroupBy(s => (s.Transport, s.Scenario))
             .Select(g =>
             {
                 var knee = 0;
+                var generatorLimited = false;
                 foreach (var step in g.OrderBy(s => s.Rate))
                 {
                     if (step.Status != Runs.RunStatus.Valid)
+                    {
+                        generatorLimited = step.Status == Runs.RunStatus.InvalidLoadGenerator;
                         break;
+                    }
                     knee = step.Rate;
                 }
 
-                return new KneeResult(g.Key.Transport, g.Key.Scenario, knee);
+                return new KneeResult(g.Key.Transport, g.Key.Scenario, knee, generatorLimited || knee >= max);
             })
             .OrderBy(k => k.Scenario).ThenBy(k => k.Transport)
             .ToList();
@@ -41,8 +48,9 @@ public static class KneeReport
             .Select(g =>
             {
                 var lowest = g.Min(k => k.KneeRate);
+                var atLeast = g.Any(k => k.KneeRate == lowest && k.AtLeast);
                 var rates = lowest == 0 ? [] : Fractions.Select(f => Math.Max(10, (int)(lowest * f) / 10 * 10)).Distinct().ToArray();
-                return new RateSuggestion(g.Key, lowest, rates);
+                return new RateSuggestion(g.Key, lowest, rates, atLeast);
             })
             .OrderBy(s => s.Scenario)
             .ToList();

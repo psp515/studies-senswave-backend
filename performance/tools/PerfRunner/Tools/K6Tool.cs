@@ -7,10 +7,10 @@ namespace PerfRunner.Tools;
 
 public sealed record RunContext(RunSpec Run, Campaign Campaign, string RunDir, string DataFile);
 
-/// <param name="MeasureStartUtc">Set by tools that run warm-up and measurement in one process (PerfStream).</param>
+/// <param name="MeasureStartUtc">Set by tools that run warm-up and measurement in one process.</param>
 public sealed record RunToolResult(bool Success, long Dropped, double ErrorRate, string Output,
     DateTimeOffset? MeasureStartUtc = null, DateTimeOffset? MeasureEndUtc = null,
-    double? DeliveryP99Ms = null, long Lost = 0);
+    double? DeliveryP99Ms = null, long Lost = 0, long? Iterations = null, double? LatencyP99Ms = null);
 
 public interface IRunTool
 {
@@ -22,14 +22,15 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
 {
     public Task<RunToolResult> Verify(RunContext c, CancellationToken ct) => Execute(c, "verify", 1, Path.Combine(c.RunDir, "verify-summary.json"), ct);
 
-    public Task<RunToolResult> Run(RunContext c, int seconds, bool measured, CancellationToken ct) =>
-        Execute(c, "run", seconds, Path.Combine(c.RunDir, measured ? "k6-summary.json" : "warmup-summary.json"), ct, measured);
+    public Task<RunToolResult> Run(RunContext c, int seconds, bool measured, CancellationToken ct) => measured
+        ? Execute(c, "run", seconds, Path.Combine(c.RunDir, "k6-summary.json"), ct, measured)
+        : Task.FromResult(new RunToolResult(true, 0, 0, "warm-up runs inside the measured k6 process"));
 
     private async Task<RunToolResult> Execute(RunContext c, string mode, int seconds, string summary, CancellationToken ct, bool measured = false)
     {
         var script = Path.Combine(settings.K6Dir, $"{c.Run.Scenario.ToString().ToLowerInvariant()}.js");
         var args = new List<string> { "run", "--quiet", "--summary-export", summary, "--tag", $"run_id={c.Run.RunId}", "--tag", $"transport={c.Run.Transport}",
-            "--tag", $"scenario={c.Run.Scenario}", "--tag", $"rate={c.Run.Rate}" };
+            "--tag", $"perf_scenario={c.Run.Scenario}", "--tag", $"rate={c.Run.Rate}" };
         var remoteWrite = measured && settings.K6RemoteWrite && settings.PromPushUrl is not null;
         if (remoteWrite)
             args.AddRange(["-o", "experimental-prometheus-rw"]);
@@ -41,6 +42,8 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
         args.ForEach(start.ArgumentList.Add);
         foreach (var (key, value) in ToolEnvironment(c, mode, seconds))
             start.Environment[key] = value;
+        if (measured)
+            start.Environment["WARMUP"] = c.Campaign.WarmupSeconds.ToString();
         if (remoteWrite)
         {
             // k6 pushes to the same Grafana Cloud Prometheus as Alloy, with the one Grafana Cloud token.
@@ -70,8 +73,9 @@ public sealed class K6Tool(RunnerSettings settings) : IRunTool
             if (!File.Exists(summary))
                 return new RunToolResult(false, 0, 1, output);
 
-            var (dropped, errorRate) = K6Summary.Read(await File.ReadAllTextAsync(summary, ct));
-            return new RunToolResult(process.ExitCode == 0 || mode == "run", dropped, errorRate, output);
+            var numbers = K6Summary.Read(await File.ReadAllTextAsync(summary, ct));
+            return new RunToolResult(process.ExitCode == 0 || mode == "run", numbers.Dropped, numbers.ErrorRate, output, K6Summary.MeasureStart(output),
+                Iterations: numbers.Iterations, LatencyP99Ms: numbers.P99Ms);
         }
     }
 

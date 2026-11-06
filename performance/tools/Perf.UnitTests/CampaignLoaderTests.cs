@@ -46,15 +46,17 @@ public class CampaignLoaderTests
     [Fact]
     public void KneeCampaignNeedsNoRates()
     {
-        var campaign = CampaignLoader.Parse(Valid.Replace("\"rates\": [100, 500, 1000],", "\"knee\": { \"max\": 2000, \"precision\": 50 },"));
+        var campaign = CampaignLoader.Parse(Valid.Replace("\"rates\": [100, 500, 1000],", "\"knee\": { \"start\": 50, \"max\": 2000, \"precision\": 0.1 },"));
 
-        Assert.Equal(new CampaignKnee(2000, 50), campaign.Knee);
+        Assert.Equal(new CampaignKnee(50, 2000, 0.1), campaign.Knee);
         Assert.Empty(campaign.Rates);
     }
 
     [Theory]
-    [InlineData("{ \"max\": 2000, \"precision\": 0 }")]
-    [InlineData("{ \"max\": 50, \"precision\": 50 }")]
+    [InlineData("{ \"start\": 50, \"max\": 2000, \"precision\": 0 }")]
+    [InlineData("{ \"start\": 50, \"max\": 2000, \"precision\": 50 }")]
+    [InlineData("{ \"start\": 0, \"max\": 2000, \"precision\": 0.1 }")]
+    [InlineData("{ \"start\": 100, \"max\": 50, \"precision\": 0.1 }")]
     public void RejectsInvalidKnee(string knee)
     {
         var ex = Assert.Throws<CampaignException>(() => CampaignLoader.Parse(Valid.Replace("\"rates\": [100, 500, 1000],", $"\"knee\": {knee},")));

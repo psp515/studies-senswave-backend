@@ -3,7 +3,7 @@
   "rounds": 1,
   "transports": ["Rest", "Grpc", "GrpcWeb"],
   "scenarios": ["S2", "S3", "S4", "S5", "S6"],
-  "knee": { "max": 1000, "precision": 50 },
+  "knee": { "start": 50, "max": 4000, "precision": 0.1 },
   "otel": [true],
   "warmupSeconds": 30,
   "durationSeconds": 60,

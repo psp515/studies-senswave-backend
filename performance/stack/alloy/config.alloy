@@ -68,6 +68,41 @@ prometheus.scrape "host" {
   forward_to      = [prometheus.relabel.env.receiver]
 }
 
+// PostgreSQL activity of the database under test. Only the metrics the export reads are kept, for the active-series limit.
+prometheus.exporter.postgres "db" {
+  data_source_names        = [sys.env("POSTGRES_EXPORTER_DSN")]
+  disable_settings_metrics = true
+  enabled_collectors       = ["database", "locks", "stat_database"]
+}
+
+prometheus.scrape "db" {
+  targets         = prometheus.exporter.postgres.db.targets
+  scrape_interval = "10s"
+  forward_to      = [prometheus.relabel.db.receiver]
+}
+
+prometheus.relabel "db" {
+  rule {
+    source_labels = ["__name__"]
+    regex         = "pg_up|pg_database_size_bytes|pg_locks_count|pg_stat_activity_count|pg_stat_database_(xact_commit|xact_rollback|blks_read|blks_hit|numbackends|deadlocks|temp_bytes)"
+    action        = "keep"
+  }
+
+  // senswave_run is dropped and recreated for every run; metrics without a database (pg_up) stay.
+  rule {
+    source_labels = ["datname"]
+    regex         = "senswave_run|"
+    action        = "keep"
+  }
+
+  // datid is the database's OID, which changes with every reset and would create new series each time (see the transform above).
+  rule {
+    regex  = "datid"
+    action = "labeldrop"
+  }
+  forward_to = [prometheus.relabel.env.receiver]
+}
+
 prometheus.relabel "env" {
   rule {
     target_label = "env"

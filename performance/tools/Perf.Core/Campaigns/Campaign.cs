@@ -9,8 +9,8 @@ public sealed record CampaignUsers(string EmailPattern, int FirstIndex, int Coun
 
 public sealed record CampaignExport(bool Traces, bool RawK6);
 
-/// <summary>Knee search by bisection: start at <paramref name="Max"/> requests or events per second, stop at <paramref name="Precision"/>.</summary>
-public sealed record CampaignKnee(int Max, int Precision);
+/// <summary>Knee search: double from <paramref name="Start"/> requests or events per second up to <paramref name="Max"/>, then bisect until the gap is at most the fraction <paramref name="Precision"/> of the knee.</summary>
+public sealed record CampaignKnee(int Start, int Max, double Precision);
 
 public sealed record Campaign(
     CampaignTarget Target,

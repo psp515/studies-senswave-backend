@@ -4,6 +4,7 @@ export const BASE_URL = (__ENV.BASE_URL || 'https://localhost:8443').replace(/\/
 export const MODE = (__ENV.MODE || 'run').toLowerCase();
 export const RATE = parseInt(__ENV.RATE || '100', 10);
 export const DURATION = __ENV.DURATION || '30s';
+export const WARMUP = parseInt(__ENV.WARMUP || '0', 10);
 export const DATA_FILE = __ENV.DATA_FILE || '';
 export const INSECURE = (__ENV.INSECURE || 'false') === 'true';
 
@@ -23,19 +24,30 @@ export function options() {
         return { ...base, scenarios: { verify: { executor: 'per-vu-iterations', vus: 1, iterations: 1 } }, thresholds: { checks: ['rate==1'] } };
     }
 
+    // A fixed pool (one connection per VU), so the client caps at an average latency of about 1 s per request and every
+    // transport holds the same VUs. k6 counts a dropped iteration whenever no VU is free, even below maxVUs.
+    const vus = Math.max(100, RATE);
+    const load = { executor: 'constant-arrival-rate', rate: RATE, timeUnit: '1s', preAllocatedVUs: vus, maxVUs: vus };
+
+    // Warm-up and measurement share one process, so the VUs and their connections carry over into the measurement.
+    // gracefulStop 0s: the phases must not overlap in k6's plan, otherwise the measurement gets its own VUs.
+    const scenarios = { measure: { ...load, duration: DURATION, startTime: `${WARMUP}s` } };
+    if (WARMUP > 0) {
+        scenarios.warmup = { ...load, duration: `${WARMUP}s`, gracefulStop: '0s' };
+    }
+
     return {
         ...base,
-        scenarios: {
-            load: {
-                executor: 'constant-arrival-rate',
-                rate: RATE,
-                timeUnit: '1s',
-                duration: DURATION,
-                // The pool grows with latency up to 2 VUs per request/s (one connection per VU), so the client caps only at a
-                // latency of 2 s per request. A slower transport therefore opens more connections (README, section 8).
-                preAllocatedVUs: Math.max(20, Math.ceil(RATE * 0.2)),
-                maxVUs: Math.max(100, RATE * 2),
-            },
+        scenarios,
+        // Always true: a threshold is what makes k6 export the metric of the measurement phase alone.
+        thresholds: {
+            'dropped_iterations{scenario:measure}': ['count>=0'],
+            'iterations{scenario:measure}': ['count>=0'],
+            'checks{scenario:measure}': ['rate>=0'],
+            'http_req_duration{scenario:measure}': ['max>=0'],
+            'grpc_req_duration{scenario:measure}': ['max>=0'],
+            'data_sent{scenario:measure}': ['count>=0'],
+            'data_received{scenario:measure}': ['count>=0'],
         },
     };
 }
