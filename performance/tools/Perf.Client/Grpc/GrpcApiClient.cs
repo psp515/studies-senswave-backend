@@ -78,11 +78,13 @@ internal sealed class GrpcApiClient : IApiClient
         var devices = await new DevicesService.DevicesServiceClient(_channel).DisplayDevicesAsync(
             new DisplayDevicesRequest { HomeId = homeId, Page = 1, Size = 30 }, Auth(accessToken), cancellationToken: ct);
         var deviceId = devices.Items.First(d => d.Name == Rest.RestApiClient.PicoDeviceName).Id;
+        var streamDeviceId = devices.Items.FirstOrDefault(d => d.Name == Rest.RestApiClient.StreamDeviceName)?.Id
+            ?? throw new InvalidOperationException(Rest.RestApiClient.StreamDeviceMissing);
         var dashboards = await new DashboardsService.DashboardsServiceClient(_channel).DisplayDashboardsAsync(
             new DisplayDashboardsRequest { DeviceId = deviceId }, Auth(accessToken), cancellationToken: ct);
 
         var dashboard = dashboards.Items.FirstOrDefault(d => d.Name == Rest.RestApiClient.LargeDashboardName) ?? dashboards.Items.First();
-        return new UserData(email, accessToken, homeId, deviceId, dashboard.Id);
+        return new UserData(email, accessToken, homeId, deviceId, dashboard.Id, streamDeviceId);
     }
 
     public async Task TileAction(string accessToken, string deviceId, bool value, CancellationToken ct) =>
@@ -136,7 +138,7 @@ internal sealed class GrpcApiClient : IApiClient
                 await new LegalService.LegalServiceClient(_channel).GetTermsAndConditionsAsync(new GetTermsAndConditionsRequest(), cancellationToken: ct)),
             Scenario.S5 => ("senswave.devices.v1.DevicesService/DeviceTileAction",
                 await new DevicesService.DevicesServiceClient(_channel).DeviceTileActionAsync(
-                    new DeviceTileActionRequest { DeviceId = user.DeviceId, Value = Value.ForBool(true) }, auth, cancellationToken: ct)),
+                    new DeviceTileActionRequest { DeviceId = user.StreamDeviceId, Value = Value.ForBool(true) }, auth, cancellationToken: ct)),
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
 

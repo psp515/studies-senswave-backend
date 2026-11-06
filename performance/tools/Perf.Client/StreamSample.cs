@@ -13,11 +13,11 @@ internal static class StreamSample
         await using var subscription = await client.Subscribe(user.AccessToken, user.HomeId, _ => { }, ct,
             (json, bytes) =>
             {
-                if (json.ToJsonString().Contains(user.DeviceId, StringComparison.Ordinal))
+                if (json.ToJsonString().Contains(user.StreamDeviceId, StringComparison.Ordinal))
                     first.TrySetResult((json, bytes));
             });
 
-        await client.TileAction(user.AccessToken, user.DeviceId, true, ct);
+        await client.TileAction(user.AccessToken, user.StreamDeviceId, true, ct);
         var (body, size) = await first.Task.WaitAsync(TimeSpan.FromSeconds(15), ct);
 
         var (call, encoding) = transport == Transport.Rest

@@ -120,6 +120,9 @@ services:
       Seed__GeneratedUsers__Broker__Password: ${SEED_BROKER_PASSWORD}
       Seed__GeneratedUsers__Devices__PicoController__GlobalTopic: perf/controller/{0}
       Seed__GeneratedUsers__Devices__DetectorTopic: perf/detector/{0}
+      # The S5 / S6 device: one operation alone on its topic, one tile, one widget, no automation.
+      Seed__GeneratedUsers__Devices__StreamDevice: "true"
+      Seed__GeneratedUsers__Devices__StreamDeviceTopic: perf/stream/{0}
       # Scenario data: 4 + 26 = 30 controller operations (S2 lists 30; the per-device limit is 30) and a 10x4
       # "Large" dashboard with 40 widgets of every type (S3 displays it).
       Seed__GeneratedUsers__Devices__PicoController__ExtraOperations: "26"

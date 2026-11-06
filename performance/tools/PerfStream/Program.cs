@@ -74,7 +74,7 @@ try
 
             var user = data.Users[(int)(i % data.Users.Count)];
             var publishedAt = Now();
-            tracker.Published(user.DeviceId, publishedAt, measured: i >= measuredFrom);
+            tracker.Published(user.StreamDeviceId, publishedAt, measured: i >= measuredFrom);
             var sequence = i / data.Users.Count;      // per-user counter: every device sees alternating values
             var measured = i >= measuredFrom;
             inflight.Add(Task.Run(async () =>
@@ -89,7 +89,7 @@ try
                 catch
                 {
                     // A failed publish will never be delivered: drop it from the pending FIFO so later matches stay aligned.
-                    tracker.Retract(user.DeviceId, publishedAt);
+                    tracker.Retract(user.StreamDeviceId, publishedAt);
                     if (measured)
                         Interlocked.Increment(ref failures);
                 }

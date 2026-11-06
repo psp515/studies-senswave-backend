@@ -10,7 +10,7 @@ public class PostgreSqlContainerFixture : IDatabase
 
     public PostgreSqlContainer Container { get; }
 
-    private static string Image => "postgres:17.6";
+    private static string Image => "postgres:18.6";
     private static string Username => "testuser";
     private static string Password => "testuser";
 

@@ -200,6 +200,19 @@ public class InitialSeedBackgroundService(
                 logger.LogInformation("[User: {user}] Pico controller seeded.", user.Email);
             }
 
+            if (user.Devices.StreamDevice)
+            {
+                var streamDevice = await deviceSeedingService.SeedStreamDevice(loginUser.Data.AccessToken, homeCreatedResult.Id, user.Devices.StreamDeviceTopic);
+
+                if (!streamDevice)
+                {
+                    logger.LogError("[User: {user}] Error seeding stream device.", user.Email);
+                    return Result.Failure();
+                }
+
+                logger.LogInformation("[User: {user}] Stream device seeded.", user.Email);
+            }
+
             if (user.Devices.PlantMonitor)
             {
                 var plantMonitor = await deviceSeedingService.SeedPlantMonitor(loginUser.Data.AccessToken, homeCreatedResult.Id);

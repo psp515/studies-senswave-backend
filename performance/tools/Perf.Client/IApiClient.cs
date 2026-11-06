@@ -18,7 +18,7 @@ public interface IApiClient : IAsyncDisposable
     /// otherwise tile actions fail with 400 "Broker client does not exist". An already started client counts as success.</summary>
     Task StartBrokerClient(string accessToken, string username, string password, CancellationToken ct);
 
-    /// <summary>Current home, the seeded Pico controller device and its first dashboard.</summary>
+    /// <summary>Current home, the seeded Pico controller device and its first dashboard (S2, S3), and the seeded stream device (S5, S6).</summary>
     Task<UserData> Discover(string email, string accessToken, CancellationToken ct);
 
     Task TileAction(string accessToken, string deviceId, bool value, CancellationToken ct);

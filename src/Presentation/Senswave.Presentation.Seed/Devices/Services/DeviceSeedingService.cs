@@ -117,6 +117,78 @@ public class DeviceSeedingService(
         }
     }
 
+    /// <summary>
+    /// The device of the S5 and S6 scenarios. A message on a topic is processed by every operation of that topic, so its
+    /// single operation is alone on the topic and no automation refers to it. S5 calls the tile, so the tile is required.
+    /// </summary>
+    public async Task<Result> SeedStreamDevice(string accessToken, Guid homeId, string topic)
+    {
+        try
+        {
+            var device = await deviceClient.CreateDevice(accessToken, new CreateDeviceRequest
+            {
+                HomeId = homeId,
+                Name = "Stream Device",
+                Icon = "radio-outline"
+            });
+
+            var operation = await operationClient.CreateOperation(accessToken, new CreateOperationRequest
+            {
+                DeviceId = device.Id,
+                Name = "Stream State",
+                Type = OperationType.Boolean.FromOperationType(),
+                Topic = topic,
+                Configuration = new()
+                {
+                    ["jsonNames"] = new JsonArray("state"),
+                    ["isJson"] = true
+                }
+            });
+
+            await deviceClient.PatchDevice(accessToken, device.Id, new UpdateDeviceRequest
+            {
+                Type = DeviceTileType.Switch.FromDeviceTileType(),
+                OperationId = operation.Id
+            });
+
+            var dashboard = await dashboardClient.CreateDashboard(accessToken, new CreateDashboardRequest
+            {
+                DeviceId = device.Id,
+                Name = "Stream",
+                Icon = "radio-outline",
+                Configuration = new()
+                {
+                    ["columns"] = 4,
+                    ["rows"] = 6
+                }
+            });
+
+            var widget = await widgetClient.CreateWidget(accessToken, new CreateWidgetRequest
+            {
+                Name = "Stream State Switch",
+                Type = WidgetType.Switch.FromWidgetType(),
+                Configuration = [],
+                OperationId = operation.Id
+            });
+
+            await dashboardClient.SetWidgetOnDashboard(accessToken, dashboard.Id, new SetWidgetOnDashboardRequest
+            {
+                Row = 0,
+                Column = 0,
+                RowSpan = 1,
+                ColumnSpan = 2,
+                WidgetId = widget.Id
+            });
+
+            return Result.Success();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "[Home: {homeId}] Error seeding Stream Device.", homeId);
+            return Result.Failure();
+        }
+    }
+
     #region Pico Controller
 
     public async Task<Result<DeviceOperations>> SeedPicoController(string accessToken, Guid homeId, Guid? roomId, PicoControllerOptions options)
@@ -555,7 +627,7 @@ public class DeviceSeedingService(
     /// <summary>
     /// One extra controller channel; the type rotates number, boolean, options, hex color. All channels share their own
     /// topic (&lt;topic&gt;/channels): a message on a topic is processed by every operation of that topic, so the extra
-    /// channels must not join the controller topic that the S5 / S6 messages travel on.
+    /// channels stay off the controller topic.
     /// </summary>
     private async Task<SeededOperation> AddExtraOperation(string accessToken, Guid deviceId, string topic, int index)
     {

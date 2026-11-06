@@ -10,7 +10,7 @@ include:
 
 services:
   database:
-    image: postgres:17.6
+    image: postgres:18.6
     container_name: Senswave.Perf.Database
     # The API's Npgsql pool may open 250 connections under overload (PostgreSql__MaxPoolSize in stack/compose.yml); with
     # the agent, health checks and the seed on top, the default max_connections of 100 is exhausted ("too many clients").
@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - perf-database-data:/var/lib/postgresql/data
+      - perf-database-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD", "pg_isready", "-q", "-U", "${POSTGRES_USER}"]
       interval: 5s

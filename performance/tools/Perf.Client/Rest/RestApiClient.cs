@@ -13,6 +13,9 @@ namespace Perf.Client.Rest;
 internal sealed class RestApiClient(ApiTarget target) : IApiClient
 {
     internal const string PicoDeviceName = "Pico Controller";
+    /// <summary>The seeded lightweight device of S5 and S6.</summary>
+    internal const string StreamDeviceName = "Stream Device";
+    internal const string StreamDeviceMissing = $"The user has no '{StreamDeviceName}': the seed is older than this runner, run 'prepare' again.";
     /// <summary>The seeded 10x4 dashboard S3 displays (falls back to the first dashboard when absent).</summary>
     internal const string LargeDashboardName = "Large";
     /// <summary>StartClientErrors.ClientIsRunning: the client of this broker is already started (500 ServerFail).</summary>
@@ -57,11 +60,13 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
         var homeId = (await Get("api/v1/homes/current", accessToken, ct))["id"]!.GetValue<string>();
         var devices = await Get($"api/v1/devices/display?homeId={homeId}&page=1&size=30", accessToken, ct);
         var deviceId = devices["items"]!.AsArray().First(d => d!["name"]!.GetValue<string>() == PicoDeviceName)!["id"]!.GetValue<string>();
+        var streamDeviceId = devices["items"]!.AsArray().FirstOrDefault(d => d!["name"]!.GetValue<string>() == StreamDeviceName)?["id"]!.GetValue<string>()
+            ?? throw new InvalidOperationException(StreamDeviceMissing);
         var dashboards = await Get($"api/v1/devices/dashboards/display?deviceId={deviceId}", accessToken, ct);
         var items = dashboards["items"]!.AsArray();
         var dashboardId = (items.FirstOrDefault(d => d!["name"]?.GetValue<string>() == LargeDashboardName) ?? items.First())!["id"]!.GetValue<string>();
 
-        return new UserData(email, accessToken, homeId, deviceId, dashboardId);
+        return new UserData(email, accessToken, homeId, deviceId, dashboardId, streamDeviceId);
     }
 
     public async Task TileAction(string accessToken, string deviceId, bool value, CancellationToken ct)
@@ -151,7 +156,7 @@ internal sealed class RestApiClient(ApiTarget target) : IApiClient
             Scenario.S2 => (HttpMethod.Get, $"api/v1/devices/operations/display?deviceId={user.DeviceId}&page=1&size=30", null),
             Scenario.S3 => (HttpMethod.Get, $"api/v1/devices/dashboards/{user.DashboardId}/display", null),
             Scenario.S4 => (HttpMethod.Get, "api/v1/legal/terms", null),
-            Scenario.S5 => (HttpMethod.Post, $"api/v1/devices/{user.DeviceId}/tile/action", new { value = true }),
+            Scenario.S5 => (HttpMethod.Post, $"api/v1/devices/{user.StreamDeviceId}/tile/action", new { value = true }),
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
 

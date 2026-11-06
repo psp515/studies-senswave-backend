@@ -224,10 +224,10 @@ az vm create --resource-group rg-senswave-perf --name vm-perf --image Canonical:
 
 ### 3.3 PostgreSQL Flexible Server
 
-**General Purpose D2ds_v5**, PostgreSQL 17, the **same region and the same availability zone** as the VM, private access in `snet-db`. Pick a strong admin password.
+**General Purpose D2ds_v5**, PostgreSQL 18, the **same region and the same availability zone** as the VM, private access in `snet-db`. Pick a strong admin password.
 
 ```bash
-az postgres flexible-server create --resource-group rg-senswave-perf --name <server-name> --location westeurope --tier GeneralPurpose --sku-name Standard_D2ds_v5 --version 17 --zone 1 --admin-user senswaveadmin --admin-password <password> --vnet vnet-perf --subnet snet-db --yes
+az postgres flexible-server create --resource-group rg-senswave-perf --name <server-name> --location westeurope --tier GeneralPurpose --sku-name Standard_D2ds_v5 --version 18 --zone 1 --admin-user senswaveadmin --admin-password <password> --vnet vnet-perf --subnet snet-db --yes
 ```
 
 The server host is `<server-name>.postgres.database.azure.com` (Azure resolves it inside the VNet through a private DNS zone it creates). The agent's admin role needs `CREATE DATABASE ... TEMPLATE`; the server admin has it. This was not verified against Flexible Server during implementation (section 7); check it at the first `prepare`.
@@ -433,12 +433,13 @@ The p99 limit makes the knee the highest rate that stays fast enough, not only t
 
 ### Scenario data and response samples
 
-The seed gives every user's Pico controller the data the scenarios read (`stack/compose.yml`, `Seed__GeneratedUsers__Devices__PicoController__*`):
+The seed gives every user's Pico controller the data S2 and S3 read (`stack/compose.yml`, `Seed__GeneratedUsers__Devices__PicoController__*`), and a separate lightweight device for S5 and S6 (`Seed__GeneratedUsers__Devices__StreamDevice*`):
 
 | Scenario | Data |
 |---|---|
 | S2 | 30 operations: the controller's own 4 (mode, state, brightness, color) on the controller topic, plus 26 channels rotating number, boolean, options and hex color on their own topic `<controller topic>/channels`. `size=30` returns all of them. The perf stack raises `Devices:Limits:OperationsPerDevice` to 64 and `DashboardsPerDevice` to 8 (`stack/api/appsettings.Production.json`). |
 | S3 | A 10 x 4 dashboard named `Large` with one 1 x 1 widget in every cell (40 widgets): switch, radio, color, and slider / display / button for number operations, reusing the 30 operations round-robin. Discovery picks this dashboard by name. |
+| S5, S6 | `Stream Device`: one boolean operation (JSON key `state`) alone on its topic `perf/stream/{n}`, a switch tile bound to it, one dashboard with one switch widget, no automation. Discovery picks it by name into `streamDeviceId` and fails if it is missing (a seed older than the runner). S5 calls its tile; S6 publishes `{"state":true}` and `{"state":false}` alternately, so every message is a value change. |
 
 Before the first measurement of each transport and scenario, `run` writes `samples/<scenario>-<transport>.json`: the call, the encoding, `payloadBytes` (JSON body or serialized protobuf message only: no HTTP/2 frames, headers, gRPC length prefix or TLS) and the response as JSON (protobuf rendered with `JsonFormatter`, default values included). S5 and S6 send one tile action for the sample; the S6 sample is the first live update for the device (SignalR hub invocation or one stream message).
 
@@ -645,7 +646,7 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 **Solution:** `stack/api/appsettings.Production.json` (mounted into every API container) sets `MilisecondSpanBetweenMessagesOnSameTopic` to `0` and `TokenLimit` to `100000`. It also turns off the ASP.NET rate limiter and SMTP, uses the in-memory bus, and sets trace sampling 0.01 and finer latency histogram boundaries.
 
 **Problem:** a pulled image tag may not exist.
-**Solution:** the images used are `postgres:17.6`, `eclipse-mosquitto:2.0.21`, `grafana/alloy:v1.10.0`, `grafana/k6:1.3.0`, `mcr.microsoft.com/dotnet/sdk:10.0` and `aspnet:10.0`. No tag had to be changed. The `certbot/dns-cloudflare` image in section 3.6 is a one-off tool outside the repository; use any current tag.
+**Solution:** the images used are `postgres:18.6`, `eclipse-mosquitto:2.0.21`, `grafana/alloy:v1.10.0`, `grafana/k6:1.3.0`, `mcr.microsoft.com/dotnet/sdk:10.0` and `aspnet:10.0`. No tag had to be changed. The `certbot/dns-cloudflare` image in section 3.6 is a one-off tool outside the repository; use any current tag.
 
 ### Findings from the local feasibility phase
 
@@ -667,7 +668,7 @@ Grafana Cloud's free tier keeps metrics only for a limited time (check your plan
 **Problem:** SignalR over HTTP/2 WebSockets: the default .NET client throws `ArgumentException: An HttpMessageInvoker instance must be passed to ConnectAsync when using HTTP/2`, and with `SkipNegotiation` the token is not sent (401).
 **Solution:** a custom `HttpConnectionOptions.WebSocketFactory` creates the socket (HTTP 2.0, `RequestVersionExact`), connects with an `HttpMessageInvoker` over `SocketsHttpHandler` and sets `Authorization: Bearer` itself. Kestrel accepts WebSockets over HTTP/2 with the current configuration, no HTTP/1.1 fallback is needed, and S6 over REST therefore runs over HTTP/2 like the other scenarios.
 
-**Problem:** live updates carry only a `device_id`; the Pico state operation produces both a device-tile update and a dashboard widget update, so counting both would double-deliver.
+**Problem:** live updates carry only a `device_id`; the stream device's operation produces both a device-tile update and a dashboard widget update, so counting both would double-deliver.
 **Solution:** only device-tile updates are counted (gRPC `DeviceTile`, SignalR update type `deviceTileActionUpdate`, key `deviceId`). Delivery is matched FIFO per device. Limitation: after a real loss, later matches for that device would be offset, so a stream run with any lost event is marked `saturated` (gate "lost events bias FIFO latency matching"), and its latency must not be reported. Publishes that fail are retracted from the pending queue. Further S6 gates: delivery p99 above 5000 ms (unbounded backlog) is `saturated`, and measured publishes whose call took over 1 s are counted in `publishBehind`, which fails the run through `dropped`. Warm-up events are not counted in `publishBehind` or `publishFailures`.
 
 **Problem:** percentile rank off by one (p=7, n=100 returned 8).
@@ -726,7 +727,7 @@ Collected here while the platform evolves; each one belongs in the thesis' threa
 - **S6 FIFO matching.** Live updates carry no timestamp, so deliveries are matched to publishes in FIFO order per device; this assumes in-order delivery. Any lost event makes the run `saturated` and its latency unusable.
 - **S6 broker hop.** S6 latency includes the MQTT broker (publisher, broker, API, subscriber). The hop is the same for every transport but adds delay and jitter that dilute the transport difference.
 - **Scope of S6.** Only device-originated live updates are measured; updates triggered by user actions (tile action with `SendEvents`, then broadcast) are not.
-- **Extra operations on a separate topic.** The API processes an incoming MQTT message with every operation subscribed to its topic (`OperationActionService.IncomingOperationActionProcessing`). The 26 extra S2 channels therefore use their own topic, so the S5 / S6 message path still touches only the controller's 4 operations, as before the S2 data was added.
+- **S5 / S6 device; earlier results are not comparable.** The API processes an incoming MQTT message with every operation subscribed to its topic (`OperationActionService.IncomingOperationActionProcessing`), so S5 and S6 moved from the Pico controller (4 operations on the topic, 15 widgets in each widget update) to the `Stream Device` (1 operation, 1 widget). S5 and S6 results measured on the Pico must not be mixed with later ones; S1-S4 data did not change. One S6 message still sends two live updates, a tile update and a widget update, and only the tile update is counted. The API also writes a session log row per received message and loads the operation's stored values (up to 100), so the path is lighter but not free of database work.
 - **Database connections.** The API uses one Npgsql pool; the perf stack sets it to 250 (`PostgreSql__MaxPoolSize`, Npgsql default 100), the same for every transport. Under overload it fills, so the server's `max_connections` must leave room for it plus the agent and health checks; otherwise steps fail with `too many clients already` and a knee would reflect a database setting, not the transport. Locally Postgres runs with `max_connections=400` (`local/compose.yml`); on Azure check `max_connections` of the Flexible Server (at least about 300) before the knee test. The pool size is a server configuration choice: state it in the thesis.
 - **S6 subscriber count.** One subscriber per user (2000 in `full.json`). Memory per subscription is still a small difference next to the working set; report it with that caveat.
 - **S6 pacing.** PerfStream schedules publishes with `Task.Delay`; at 1000/s the 1 ms interval is close to the timer resolution, so events can be sent in small bursts.

@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Perf.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Perf.Core\Perf.Core.csproj" />
     <ProjectReference Include="..\Perf.Client\Perf.Client.csproj" />
   </ItemGroup>

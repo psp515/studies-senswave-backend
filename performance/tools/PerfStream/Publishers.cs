@@ -39,13 +39,13 @@ public sealed class MqttPublisher(IMqttClient client) : IPublisher
         await client.PublishAsync(message, ct);
     }
 
-    // The seeded Pico controller's tile is a Switch bound to the "Controller State" operation:
-    // topic = Seed GlobalTopic "perf/controller/{n}" (n from user{n}@gmail.com), JSON key "working".
+    // The seeded stream device's tile is a Switch bound to its only operation:
+    // topic = Seed StreamDeviceTopic "perf/stream/{n}" (n from user{n}@gmail.com), JSON key "state".
     internal static string DeviceTopic(UserData user) =>
-        $"perf/controller/{System.Text.RegularExpressions.Regex.Match(user.Email, @"\d+").Value}";
+        $"perf/stream/{System.Text.RegularExpressions.Regex.Match(user.Email, @"\d+").Value}";
 
     // Alternate so every message is a value change (sequence is a per-user counter).
-    internal static string DevicePayload(long sequence) => sequence % 2 == 0 ? "{\"working\":true}" : "{\"working\":false}";
+    internal static string DevicePayload(long sequence) => sequence % 2 == 0 ? "{\"state\":true}" : "{\"state\":false}";
 
     public async ValueTask DisposeAsync()
     {

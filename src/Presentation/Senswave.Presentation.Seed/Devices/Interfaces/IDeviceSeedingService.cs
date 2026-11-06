@@ -10,6 +10,8 @@ public interface IDeviceSeedingService
 
     Task<Result<DeviceOperations>> SeedDetector(string accessToken, Guid homeId, string topic);
 
+    Task<Result> SeedStreamDevice(string accessToken, Guid homeId, string topic);
+
     Task<Result> SeedEmptyDevice(string accessToken, Guid homeId);
 
     Task<Result> SeedPlantMonitor(string accessToken, Guid homeId);
