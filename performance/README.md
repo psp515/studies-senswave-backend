@@ -86,7 +86,7 @@ The rpc names come from `src/Shared/Senswave.Contracts/Protos`.
 - For S1-S5 the rate is requests per second.
 - For S6 the rate is **events published per second**. PerfStream acts as the devices and publishes MQTT messages to the broker; the API receives them and LiveUpdate pushes them to the subscribers. There is one subscriber per seeded user's device, so delivered events per second equals published events per second. The publisher does not use the transport under test, so S6 isolates the push path (server to client).
 - A stream triggered by user actions (tile action with `SendEvents`, then broadcast) is out of scope; the write request itself is covered by S5.
-- **Campaign:** rounds × transports (order shuffled per round) × scenarios × rates × OTel on/off.
+- **Campaign:** rounds × OTel on/off × scenarios × rates × transports. The runs are **interleaved**: for every scenario and rate the transports run back to back in the fixed order of the campaign's `transports` list (REST, gRPC, gRPC-Web), so the transports compared at the same scenario and rate are measured within minutes of each other. Every run still starts from a reset database and a freshly started API.
 
 ### Layout
 
@@ -401,7 +401,7 @@ JSON, read with `System.Text.Json` (`runner/campaigns/smoke.json`, `full.json`).
 | `target.agent` | URL | PerfAgent base URL (`https://<host>:9443`). |
 | `target.insecureTls` | bool | Skip certificate validation (local self-signed certificate only). |
 | `rounds` | int > 0 | How many times the whole matrix repeats. |
-| `transports` | `Rest`, `Grpc`, `GrpcWeb` | Transports under test. Order is shuffled per round; the shuffle seed is recorded in `meta.json` and `campaign.json`. |
+| `transports` | `Rest`, `Grpc`, `GrpcWeb` | Transports under test. They run interleaved per scenario and rate, in the order of this list (no shuffling). |
 | `scenarios` | `S1` ... `S6` | Scenarios to run. |
 | `rates` | int[] | Requests per second (S1-S5) or published events per second (S6). |
 | `otel` | bool[] | `[true]` OpenTelemetry on; `[true, false]` adds the overhead control runs. |

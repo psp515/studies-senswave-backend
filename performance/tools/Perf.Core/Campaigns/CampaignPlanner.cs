@@ -11,58 +11,34 @@ public sealed record RunPair(int Round, Transport Transport, Scenario Scenario, 
 public static class CampaignPlanner
 {
     /// <summary>
-    /// Rounds in order; within a round, the transport order is shuffled (seeded per round) and each transport's
-    /// runs stay together, so transports interleave across rounds and noise spreads evenly.
+    /// Rounds in order. Within a round the runs are interleaved: for every scenario and rate, the transports run back to
+    /// back in the campaign's fixed order. So the transports compared at the same scenario and rate are measured within
+    /// minutes of each other, under the same conditions. <paramref name="seed"/> is kept for the record only.
     /// </summary>
-    public static IReadOnlyList<RunSpec> Expand(Campaign campaign, int seed)
-    {
-        var runs = new List<RunSpec>();
+    public static IReadOnlyList<RunSpec> Expand(Campaign campaign, int seed) =>
+        // Ladder knee mode climbs each scenario's rates from the lowest, so the runner can stop at the first saturated step.
+        Interleave(campaign, seed, scenario => campaign.StopAfterSaturated ? campaign.RatesFor(scenario).Order().ToArray() : campaign.RatesFor(scenario))
+            .Select(x => new RunSpec(RunId(x.Round, x.Transport, x.Scenario, x.Rate, x.Otel), x.Round, x.Transport, x.Scenario, x.Rate, x.Otel))
+            .ToList();
 
+    /// <summary>
+    /// The (round, OTel, scenario, transport) pairs of a knee search, interleaved like <see cref="Expand"/>: per scenario the
+    /// transports follow each other in the campaign's order. With a single rate the order equals <see cref="Expand"/>.
+    /// </summary>
+    public static IReadOnlyList<RunPair> Pairs(Campaign campaign, int seed) =>
+        Interleave(campaign, seed, _ => [0])
+            .Select(x => new RunPair(x.Round, x.Transport, x.Scenario, x.Otel))
+            .ToList();
+
+    private static IEnumerable<(int Round, bool Otel, Scenario Scenario, int Rate, Transport Transport)> Interleave(
+        Campaign campaign, int seed, Func<Scenario, int[]> rates)
+    {
         for (var round = 1; round <= campaign.Rounds; round++)
-        {
-            var random = new Random(unchecked(seed * 31 + round));
-            var transports = Shuffle(campaign.Transports, random);
-
-            foreach (var otel in campaign.Otel)
-            foreach (var transport in transports)
-            foreach (var scenario in campaign.Scenarios)
-            // Knee mode climbs each scenario's rates from the lowest, so the runner can stop at the first saturated step.
-            foreach (var rate in campaign.StopAfterSaturated ? campaign.RatesFor(scenario).Order().ToArray() : campaign.RatesFor(scenario))
-                runs.Add(new RunSpec(RunId(round, transport, scenario, rate, otel), round, transport, scenario, rate, otel));
-        }
-
-        return runs;
-    }
-
-    /// <summary>The (round, OTel, transport, scenario) pairs in the same order as <see cref="Expand"/>, without rates.</summary>
-    public static IReadOnlyList<RunPair> Pairs(Campaign campaign, int seed)
-    {
-        var pairs = new List<RunPair>();
-
-        for (var round = 1; round <= campaign.Rounds; round++)
-        {
-            var random = new Random(unchecked(seed * 31 + round));
-            var transports = Shuffle(campaign.Transports, random);
-
-            foreach (var otel in campaign.Otel)
-            foreach (var transport in transports)
-            foreach (var scenario in campaign.Scenarios)
-                pairs.Add(new RunPair(round, transport, scenario, otel));
-        }
-
-        return pairs;
-    }
-
-    private static Transport[] Shuffle(Transport[] source, Random random)
-    {
-        var items = (Transport[])source.Clone();
-        for (var i = items.Length - 1; i > 0; i--)
-        {
-            var j = random.Next(i + 1);
-            (items[i], items[j]) = (items[j], items[i]);
-        }
-
-        return items;
+        foreach (var otel in campaign.Otel)
+        foreach (var scenario in campaign.Scenarios)
+        foreach (var rate in rates(scenario))
+        foreach (var transport in campaign.Transports)
+            yield return (round, otel, scenario, rate, transport);
     }
 
     public static string RunId(int round, Transport transport, Scenario scenario, int rate, bool otel) =>
