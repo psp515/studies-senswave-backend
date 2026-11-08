@@ -37,7 +37,7 @@ New REST failure-path tests must carry the tag. An untagged one silently enters 
 
 ## Running instances (load and latency)
 
-[`performance/`](../performance/README.md) has a ready setup: one container per transport from the same image, and k6 scripts.
+[`performance/README.md`](../performance/README.md) describes the full platform (local and Azure): one API container is active at a time, switched between `Rest`, `Grpc` and `GrpcWeb` by PerfAgent, with a campaign runner, k6 and PerfStream scenarios, and server-side data export.
 
 Use the same image and configuration for each instance. Only the mode changes:
 
