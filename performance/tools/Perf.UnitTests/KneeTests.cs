@@ -37,11 +37,11 @@ public class KneeTests
         ]));
 
         Assert.Equal(800, suggestion.LowestKnee);
-        Assert.Equal([200, 600], suggestion.Rates);
+        Assert.Equal([200, 640], suggestion.Rates);
     }
 
     [Theory]
-    [InlineData(130, new[] { 30, 90 })]     // rounded down to a multiple of 10
+    [InlineData(130, new[] { 30, 100 })]    // rounded down to a multiple of 10
     [InlineData(20, new[] { 10 })]          // at least 10, duplicates removed
     [InlineData(0, new int[0])]             // no valid step: nothing to suggest
     public void SuggestedRatesAreRounded(int knee, int[] expected) =>

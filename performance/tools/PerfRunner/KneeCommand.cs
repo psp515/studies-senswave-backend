@@ -37,7 +37,7 @@ public static class KneeCommand
         foreach (var s in suggestions)
             Console.WriteLine(s.Rates.Length == 0
                 ? $"{s.Scenario}: no valid step on some transport; lower the first rate and repeat"
-                : $"{s.Scenario}: lowest knee {(s.AtLeast ? ">= " : "")}{s.LowestKnee}/s -> rates [{string.Join(", ", s.Rates)}]{(s.AtLeast ? " (lower bound: not really 25% and 75% of the capacity)" : "")}");
+                : $"{s.Scenario}: lowest knee {(s.AtLeast ? ">= " : "")}{s.LowestKnee}/s -> rates [{string.Join(", ", s.Rates)}]{(s.AtLeast ? " (lower bound: not really 25% and 80% of the capacity)" : "")}");
 
         var scenarioRates = suggestions.Where(s => s.Rates.Length > 0).ToDictionary(s => s.Scenario.ToString(), s => s.Rates);
         await File.WriteAllTextAsync(Path.Combine(campaignDir, "suggested-scenario-rates.json"),

@@ -5,8 +5,8 @@
   "scenarios": ["S1", "S2", "S3", "S4", "S5", "S6"],
   "knee": { "start": 50, "max": 4000, "precision": 0.1 },
   "otel": [true],
-  "warmupSeconds": 30,
+  "warmupSeconds": 60,
   "durationSeconds": 60,
-  "users": { "emailPattern": "user{0}@gmail.com", "firstIndex": 1, "count": 2000, "password": "User123456!" },
+  "users": { "emailPattern": "user{0}@gmail.com", "firstIndex": 1, "count": 1000, "password": "User123456!" },
   "export": { "traces": false, "rawK6": false }
 }

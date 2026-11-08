@@ -11,13 +11,13 @@ public sealed record KneeStep(Transport Transport, Scenario Scenario, int Rate, 
 public sealed record KneeResult(Transport Transport, Scenario Scenario, int KneeRate, bool AtLeast = false);
 
 /// <param name="LowestKnee">The lowest knee across the transports of the scenario.</param>
-/// <param name="Rates">The suggested fixed rates: 25% and 75% of <paramref name="LowestKnee"/>.</param>
-/// <param name="AtLeast">The lowest knee is only a lower bound, so the rates are not really 25% and 75% of the capacity.</param>
+/// <param name="Rates">The suggested fixed rates: 25% and 80% of <paramref name="LowestKnee"/>.</param>
+/// <param name="AtLeast">The lowest knee is only a lower bound, so the rates are not really 25% and 80% of the capacity.</param>
 public sealed record RateSuggestion(Scenario Scenario, int LowestKnee, int[] Rates, bool AtLeast = false);
 
 public static class KneeReport
 {
-    public static readonly double[] Fractions = [0.25, 0.75];
+    public static readonly double[] Fractions = [0.25, 0.80];
 
     /// <summary>The knee is the highest rate whose step and every lower step are valid; 0 when the lowest step already failed.</summary>
     /// <param name="max">The search's upper limit, if any: a knee at this rate is reported as a lower bound.</param>
@@ -42,7 +42,7 @@ public static class KneeReport
             .OrderBy(k => k.Scenario).ThenBy(k => k.Transport)
             .ToList();
 
-    /// <summary>Per scenario, 25% and 75% of the lowest knee across transports, rounded down to a multiple of 10 (at least 10).</summary>
+    /// <summary>Per scenario, 25% and 80% of the lowest knee across transports, rounded down to a multiple of 10 (at least 10).</summary>
     public static IReadOnlyList<RateSuggestion> Suggest(IEnumerable<KneeResult> knees) =>
         knees.GroupBy(k => k.Scenario)
             .Select(g =>
