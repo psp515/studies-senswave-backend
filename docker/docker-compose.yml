@@ -70,7 +70,7 @@ services:
       start_period: 3s
 
   senswave.database:
-    image: postgres:17.6
+    image: postgres:18.6
     container_name: Senswave.Database
     hostname: database
     ports:
@@ -78,7 +78,7 @@ services:
     networks:
       - senswave_network
     volumes:
-      - database-data:/var/lib/postgresql/data
+      - database-data:/var/lib/postgresql
     environment:
       - POSTGRES_DB=${PostgreSql__Database}
       - POSTGRES_USER=${PostgreSql__Username}

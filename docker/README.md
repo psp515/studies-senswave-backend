@@ -35,8 +35,9 @@ Besides `Seed__DefaultUser`, it can generate a batch of users from one template:
 named by `Seed__GeneratedUsers__EmailPattern` (`{0}` is the 1-based index), all with the same password, home, devices
 and automations, and all pointing at one shared MQTT broker given by `Seed__GeneratedUsers__Broker__*` (with an empty
 `Url` they reuse the `Seed__DefaultUser` broker). Each user
-gets a unique broker client id, and `{0}` in `Seed__GeneratedUsers__Devices__PicoController__GlobalTopic` keeps the
-controller topics apart.
+gets a unique broker client id, and `{0}` in `Seed__GeneratedUsers__Devices__PicoController__GlobalTopic`,
+`DetectorTopic` and `StreamDeviceTopic` keeps the topics apart. The seed fails at startup if an enabled device's pattern
+has no `{0}`.
 
 Several users registering the same broker URL and port is rejected unless
 `Modules__DataSource__Brokers__AllowSharedBrokers=true` is set on the API, which the template does. Seeding is

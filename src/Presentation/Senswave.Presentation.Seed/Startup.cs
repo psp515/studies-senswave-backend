@@ -29,6 +29,8 @@ public class Startup(IConfiguration configuration)
         configuration.GetSection(SeedOptions.SectionName).Bind(seedOptions);
 
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
+        services.AddSingleton<IValidateOptions<SeedOptions>, SeedOptionsValidator>();
+        services.AddOptions<SeedOptions>().ValidateOnStart();
         services.Configure<PostgreSqlOptions>(configuration.GetSection(PostgreSqlOptions.SectionName));
 
         services.AddRefitClient<IIdentityClient>()

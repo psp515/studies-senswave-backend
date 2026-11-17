@@ -1,0 +1,17 @@
+name: senswave-perf-runner
+
+# Load side: run on your machine or the separate 2-vCPU box.
+#   docker compose -f performance/runner/compose.yml run --rm runner prepare runner/campaigns/smoke.json
+#   docker compose -f performance/runner/compose.yml run --rm runner run runner/campaigns/smoke.json
+services:
+  runner:
+    image: senswave-perf-runner
+    build:
+      context: ../..
+      dockerfile: performance/tools/PerfRunner/Dockerfile
+    env_file: ../.env           # performance/.env (template: performance/.env.template)
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ../results:/work/performance/results
+      - ./campaigns:/work/performance/runner/campaigns:ro

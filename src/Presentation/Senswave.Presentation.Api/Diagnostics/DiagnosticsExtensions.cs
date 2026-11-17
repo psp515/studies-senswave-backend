@@ -73,17 +73,23 @@ public static class DiagnosticsExtensions
                 .AddSqlClientInstrumentation()
                 .AddNpgsql()
                 .AddOtlpExporter()
-            ).WithMetrics(x => x
-                .AddNpgsqlInstrumentation()
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddSqlClientInstrumentation()
-                .AddRuntimeInstrumentation()
-                .AddProcessInstrumentation()
-                .AddMeter(Telemetry.SmtpClient.MeterName)
-                .AddOtlpExporter((_, reader) =>
-                    reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = options.MetricExportIntervalSeconds * 1000)
-            );
+            ).WithMetrics(x =>
+            {
+                x.AddNpgsqlInstrumentation()
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddSqlClientInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddProcessInstrumentation()
+                    .AddMeter(Telemetry.SmtpClient.MeterName);
+
+                if (options.LatencyHistogramBoundaries.Length > 0)
+                    x.AddView("http.server.request.duration",
+                        new ExplicitBucketHistogramConfiguration { Boundaries = options.LatencyHistogramBoundaries });
+
+                x.AddOtlpExporter((_, reader) =>
+                    reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = options.MetricExportIntervalSeconds * 1000);
+            });
 
         return services;
     }

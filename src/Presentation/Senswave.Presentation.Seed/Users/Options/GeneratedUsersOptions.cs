@@ -8,7 +8,7 @@ namespace Senswave.Presentation.Seed.Users.Options;
 /// <summary>
 /// Template for a batch of generated users. Every user gets the same password, role,
 /// broker, home, devices and automations. <c>{0}</c> in <see cref="EmailPattern"/> and in
-/// the Pico controller global topic is replaced with the user's 1-based index.
+/// the device topics is replaced with the user's 1-based index.
 /// When <see cref="Broker"/> has no URL, the fallback broker (the default user's) is used
 /// with this template's name, so credentials live in one place.
 /// </summary>
@@ -55,15 +55,55 @@ public class GeneratedUsersOptions
                 Devices = new DeviceOptions
                 {
                     Detector = Devices.Detector,
+                    DetectorTopic = string.Format(Devices.DetectorTopic, index),
+                    StreamDevice = Devices.StreamDevice,
+                    StreamDeviceTopic = string.Format(Devices.StreamDeviceTopic, index),
                     EmptyDevice = Devices.EmptyDevice,
                     PlantMonitor = Devices.PlantMonitor,
                     PicoController = new PicoControllerOptions
                     {
                         Enabled = Devices.PicoController.Enabled,
-                        GlobalTopic = string.Format(Devices.PicoController.GlobalTopic, index)
+                        GlobalTopic = string.Format(Devices.PicoController.GlobalTopic, index),
+                        ExtraOperations = Devices.PicoController.ExtraOperations,
+                        LargeDashboardRows = Devices.PicoController.LargeDashboardRows,
+                        LargeDashboardColumns = Devices.PicoController.LargeDashboardColumns
                     }
                 }
             };
         }
     }
+
+    /// <summary>
+    /// Topic patterns of the enabled devices that would not give every user its own topic: without <c>{0}</c>,
+    /// <see cref="Expand"/> would silently give all users the same one.
+    /// </summary>
+    public IEnumerable<string> TopicPatternErrors()
+    {
+        if (Count <= 0)
+            yield break;
+
+        if (Devices.PicoController.Enabled && !IsPerUser(Devices.PicoController.GlobalTopic))
+            yield return PatternError("PicoController:GlobalTopic", Devices.PicoController.GlobalTopic);
+
+        if (Devices.Detector && !IsPerUser(Devices.DetectorTopic))
+            yield return PatternError("DetectorTopic", Devices.DetectorTopic);
+
+        if (Devices.StreamDevice && !IsPerUser(Devices.StreamDeviceTopic))
+            yield return PatternError("StreamDeviceTopic", Devices.StreamDeviceTopic);
+    }
+
+    private static bool IsPerUser(string pattern)
+    {
+        try
+        {
+            return string.Format(pattern, 1) != string.Format(pattern, 2);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static string PatternError(string option, string pattern) =>
+        $"Seed:GeneratedUsers:Devices:{option} = '{pattern}' must contain {{0}}, otherwise generated users share one topic.";
 }

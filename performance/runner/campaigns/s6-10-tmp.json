@@ -1,0 +1,12 @@
+{
+  "target": { "api": "https://perf.senswavelabs.com:8443", "agent": "https://perf.senswavelabs.com:9443", "insecureTls": false },
+  "rounds": 1,
+  "transports": ["Rest", "Grpc", "GrpcWeb"],
+  "scenarios": ["S6"],
+  "rates": [10],
+  "otel": [true],
+  "warmupSeconds": 30,
+  "durationSeconds": 30,
+  "users": { "emailPattern": "user{0}@gmail.com", "firstIndex": 1, "count": 100, "password": "User123456!" },
+  "export": { "traces": false, "rawK6": true }
+}

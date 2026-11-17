@@ -53,15 +53,20 @@ public class InitialSeedBackgroundService(
 
         int errorCount = 0;
 
-        foreach (var user in users)
-        {
-            var result = await SeedUser(user);
+        // Users are independent, so several are seeded at once (Parallelism, default 1 = one after another).
+        // The default user stays first and alone, so its data exists before the others start.
+        var parallelism = Math.Max(1, seedOptions.Value.Parallelism);
+        var startIndex = seedOptions.Value.DefaultUser is not null ? 1 : 0;
 
-            if (!result)
+        if (startIndex == 1 && !await SeedUser(users[0]))
+            errorCount++;
+
+        await Parallel.ForEachAsync(users.Skip(startIndex), new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = stoppingToken },
+            async (user, _) =>
             {
-                errorCount++;
-            }
-        }
+                if (!await SeedUser(user))
+                    Interlocked.Increment(ref errorCount);
+            });
 
         if (errorCount > 0)
         {
@@ -167,7 +172,7 @@ public class InitialSeedBackgroundService(
             DeviceOperations? detector = null;
             if (user.Devices.Detector)
             {
-                var seedDetector = await deviceSeedingService.SeedDetector(loginUser.Data.AccessToken, homeCreatedResult.Id);
+                var seedDetector = await deviceSeedingService.SeedDetector(loginUser.Data.AccessToken, homeCreatedResult.Id, user.Devices.DetectorTopic);
 
                 if (!seedDetector)
                 {
@@ -183,7 +188,7 @@ public class InitialSeedBackgroundService(
             DeviceOperations? picoController = null;
             if (user.Devices.PicoController.Enabled)
             {
-                var seedPicoController = await deviceSeedingService.SeedPicoController(loginUser.Data.AccessToken, homeCreatedResult.Id, roomResponse.Id, user.Devices.PicoController.GlobalTopic);
+                var seedPicoController = await deviceSeedingService.SeedPicoController(loginUser.Data.AccessToken, homeCreatedResult.Id, roomResponse.Id, user.Devices.PicoController);
 
                 if (!seedPicoController)
                 {
@@ -193,6 +198,19 @@ public class InitialSeedBackgroundService(
                 picoController = seedPicoController.Data;
 
                 logger.LogInformation("[User: {user}] Pico controller seeded.", user.Email);
+            }
+
+            if (user.Devices.StreamDevice)
+            {
+                var streamDevice = await deviceSeedingService.SeedStreamDevice(loginUser.Data.AccessToken, homeCreatedResult.Id, user.Devices.StreamDeviceTopic);
+
+                if (!streamDevice)
+                {
+                    logger.LogError("[User: {user}] Error seeding stream device.", user.Email);
+                    return Result.Failure();
+                }
+
+                logger.LogInformation("[User: {user}] Stream device seeded.", user.Email);
             }
 
             if (user.Devices.PlantMonitor)

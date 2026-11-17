@@ -1,0 +1,155 @@
+// Grafana Alloy on the VM (Spec E): app OTLP + container (cAdvisor) + host metrics to Grafana Cloud. No logs.
+
+otelcol.receiver.otlp "apps" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+  output {
+    metrics = [otelcol.processor.transform.promote.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Grafana Cloud keeps resource attributes on target_info only; copy transport onto every data point so exports can
+// filter by it. run_id is deliberately NOT copied: a label that changes every run creates a new set of series per run
+// (~400), and a campaign then exceeds the free tier's active-series limit (15000), after which Grafana Cloud rejects
+// data. Only one API runs at a time, so a run is selected by transport + its measurement window (meta.json).
+// run_id stays a resource attribute (target_info, traces).
+otelcol.processor.transform "promote" {
+  error_mode = "ignore"
+  metric_statements {
+    context    = "datapoint"
+    statements = [
+      `set(attributes["transport"], resource.attributes["senswave.transport"])`,
+    ]
+  }
+  output { metrics = [otelcol.processor.batch.default.input] }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
+    traces  = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+otelcol.auth.basic "grafana_cloud" {
+  username = sys.env("GRAFANA_CLOUD_OTLP_USER")
+  password = sys.env("GRAFANA_CLOUD_TOKEN")
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    auth     = otelcol.auth.basic.grafana_cloud.handler
+  }
+}
+
+prometheus.exporter.cadvisor "containers" {
+  docker_host      = "unix:///var/run/docker.sock"
+  docker_only      = true
+  storage_duration = "2m"
+}
+
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+prometheus.scrape "containers" {
+  targets         = prometheus.exporter.cadvisor.containers.targets
+  scrape_interval = "10s"
+  forward_to      = [prometheus.relabel.env.receiver]
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  scrape_interval = "10s"
+  forward_to      = [prometheus.relabel.env.receiver]
+}
+
+// PostgreSQL activity of the database under test. Only the metrics the export reads are kept, for the active-series limit.
+prometheus.exporter.postgres "db" {
+  data_source_names        = [sys.env("POSTGRES_EXPORTER_DSN")]
+  disable_settings_metrics = true
+  enabled_collectors       = ["database", "locks", "stat_database"]
+}
+
+prometheus.scrape "db" {
+  targets         = prometheus.exporter.postgres.db.targets
+  scrape_interval = "10s"
+  forward_to      = [prometheus.relabel.db.receiver]
+}
+
+prometheus.relabel "db" {
+  rule {
+    source_labels = ["__name__"]
+    regex         = "pg_up|pg_database_size_bytes|pg_locks_count|pg_stat_activity_count|pg_stat_database_(xact_commit|xact_rollback|blks_read|blks_hit|numbackends|deadlocks|temp_bytes)"
+    action        = "keep"
+  }
+
+  // senswave_run is dropped and recreated for every run; metrics without a database (pg_up) stay.
+  rule {
+    source_labels = ["datname"]
+    regex         = "senswave_run|"
+    action        = "keep"
+  }
+
+  // datid is the database's OID, which changes with every reset and would create new series each time (see the transform above).
+  rule {
+    regex  = "datid"
+    action = "labeldrop"
+  }
+  forward_to = [prometheus.relabel.env.receiver]
+}
+
+prometheus.relabel "env" {
+  // Only what the export, the dashboard or a diagnosis needs: the exporters emit thousands of series (active-series limit).
+  rule {
+    source_labels = ["__name__"]
+    regex         = "container_(cpu_usage_seconds_total|memory_working_set_bytes|network_(receive|transmit)_bytes_total|oom_events_total)|node_(cpu_seconds_total|memory_MemAvailable_bytes|memory_MemTotal_bytes|network_.+)|pg_.+"
+    action        = "keep"
+  }
+
+  // Docker creates a new veth interface for every recreated container, and each would add new node_network_* series.
+  rule {
+    source_labels = ["__name__", "device"]
+    regex         = "node_network_.+;(veth.+|br-.+|docker.+|lo)"
+    action        = "drop"
+  }
+
+  rule {
+    target_label = "env"
+    replacement  = sys.env("PERF_ENV")
+  }
+
+  // The agent recreates the API container for every run, so cAdvisor's `id` (the cgroup path with the container id)
+  // changes every run and would create new series each time (active-series limit, see the transform above).
+  // Containers are identified by `name`, so `id` is replaced with a value derived from it. Series without a name
+  // (the root cgroup "/") keep their id.
+  rule {
+    source_labels = ["name"]
+    regex         = "(.+)"
+    target_label  = "id"
+    replacement   = "/docker/$1"
+  }
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROM_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROM_USER")
+      password = sys.env("GRAFANA_CLOUD_TOKEN")
+    }
+
+    // Grafana Cloud free tier: 75 requests/s per tenant. Few shards with large batches stay far below it,
+    // also when a backlog is flushed after a restart (429s are retried, but they delay the data).
+    queue_config {
+      max_shards           = 2
+      max_samples_per_send = 5000
+      batch_send_deadline  = "5s"
+    }
+  }
+}

@@ -67,4 +67,44 @@ public class GridDashboardValidationTests : BaseDashboardTest
         // Assert
         Assert.True(result.IsFailure);
     }
+
+    [Theory]
+    [InlineData(10, 4)]
+    [InlineData(10, 5)]
+    public async Task DashboardWithAWidgetInEveryCellIsValid(int rows, int columns)
+    {
+        // Arrange
+        var widgets = new JsonArray();
+        for (var cell = 0; cell < rows * columns; cell++)
+        {
+            widgets.Add(new JsonObject
+            {
+                ["widgetId"] = Guid.NewGuid(),
+                ["row"] = cell / columns,
+                ["rowSpan"] = 1,
+                ["column"] = cell % columns,
+                ["columnSpan"] = 1,
+            });
+        }
+
+        var dashboard = GridDashboard;
+        dashboard.Id = Guid.NewGuid();
+        dashboard.Configuration = new JsonObject
+        {
+            ["rows"] = rows,
+            ["columns"] = columns,
+            ["positionedWidgets"] = widgets,
+        };
+
+        dashboardQueryRepository.Setup(x => x.GetDashboard(dashboard.Id, default))
+            .ReturnsAsync(dashboard);
+
+        var created = await dashboardFactory.Create(dashboard.Id, default);
+
+        // Act
+        var result = await created.Data.Validate();
+
+        // Assert
+        Assert.True(result.IsSuccess);
+    }
 }

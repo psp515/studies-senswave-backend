@@ -27,6 +27,7 @@ public sealed class GridDashboardValidator : AbstractValidator<GridDashboard>
             .InclusiveBetween(1, 5);
 
         RuleFor(x => x.Configuration.PositionedWidgets)
-            .Must(x => x.Count <= 20);
+            .Must((dashboard, widgets) => widgets.Count <= dashboard.Configuration.Rows * dashboard.Configuration.Columns)
+            .WithMessage("A dashboard cannot hold more widgets than it has cells.");
     }
 }
